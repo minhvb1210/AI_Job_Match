@@ -1,0 +1,20 @@
+import requests
+import json
+
+BASE_URL = "http://127.0.0.1:8000"
+
+def test_companies():
+    print("Testing GET /companies/ ...")
+    resp = requests.get(f"{BASE_URL}/companies/")
+    print(f"Status: {resp.status_code}")
+    print(f"Body: {json.dumps(resp.json(), indent=2)}")
+
+def test_jobs_search():
+    print("\nTesting GET /jobs/search ...")
+    resp = requests.get(f"{BASE_URL}/jobs/search")
+    print(f"Status: {resp.status_code}")
+    print(f"Body: {json.dumps(resp.json(), indent=2)}")
+
+if __name__ == "__main__":
+    test_companies()
+    test_jobs_search()

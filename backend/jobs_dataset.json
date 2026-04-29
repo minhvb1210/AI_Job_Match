@@ -1,0 +1,74 @@
+[
+  {
+    "id": 1,
+    "title": "Flutter Developer",
+    "company": "TechVina",
+    "location": "Ho Chi Minh City",
+    "salary": "$800 - $1500",
+    "description": "We are looking for an experienced Flutter Developer to build cross-platform mobile applications. You will be responsible for creating high-performance UI components, integrating RESTful APIs, and maintaining code quality.",
+    "skills": ["Flutter", "Dart", "Firebase", "REST API", "Mobile Development"]
+  },
+  {
+    "id": 2,
+    "title": "Python Backend Developer",
+    "company": "AI Solutions",
+    "location": "Hanoi",
+    "salary": "$1000 - $2000",
+    "description": "Join our AI backend team. You will design and implement REST APIs using FastAPI, integrate Machine Learning models (TF-IDF, NLP), and optimize database queries. Strong Python skills are required.",
+    "skills": ["Python", "FastAPI", "SQL", "Machine Learning", "NLP", "scikit-learn"]
+  },
+  {
+    "id": 3,
+    "title": "Frontend React Engineer",
+    "company": "Global Dev",
+    "location": "Da Nang",
+    "salary": "$700 - $1200",
+    "description": "Build modern web applications using React.js and Next.js. You should understand responsive design, state management with Redux, and modern CSS frameworks like Tailwind.",
+    "skills": ["React", "JavaScript", "HTML", "CSS", "Next.js", "Redux"]
+  },
+  {
+    "id": 4,
+    "title": "Data Scientist",
+    "company": "DataCorp",
+    "location": "Ho Chi Minh City",
+    "salary": "$1200 - $2500",
+    "description": "We need a Data Scientist to analyze complex datasets, build recommendation systems, and apply statistical techniques. Experience with Python, Pandas, and Scikit-Learn is essential.",
+    "skills": ["Python", "Data Analysis", "Machine Learning", "Pandas", "scikit-learn", "Statistics"]
+  },
+  {
+    "id": 5,
+    "title": "Java Backend Developer",
+    "company": "Fintech Asia",
+    "location": "Hanoi",
+    "salary": "$1500 - $3000",
+    "description": "Develop core banking systems using Java and Spring Boot. You must have strong knowledge of microservices architecture, PostgreSQL, and system security.",
+    "skills": ["Java", "Spring Boot", "Microservices", "PostgreSQL", "Backend"]
+  },
+  {
+    "id": 6,
+    "title": "Fullstack Web Developer",
+    "company": "StartupX",
+    "location": "Remote",
+    "salary": "$1000 - $1800",
+    "description": "Looking for a Fullstack Developer proficient in Node.js and React. You will own features end-to-end, from database design (MongoDB) to frontend UI components.",
+    "skills": ["Node.js", "React", "MongoDB", "Express", "JavaScript"]
+  },
+  {
+    "id": 7,
+    "title": "Mobile App Developer (iOS/Android)",
+    "company": "Appify",
+    "location": "Ho Chi Minh City",
+    "salary": "$900 - $1600",
+    "description": "Develop native and cross-platform applications. Experience with Swift for iOS or Kotlin for Android is a plus, but Flutter/React Native is acceptable.",
+    "skills": ["Mobile Development", "Swift", "Kotlin", "React Native", "Flutter"]
+  },
+  {
+    "id": 8,
+    "title": "DevOps Engineer",
+    "company": "CloudSys",
+    "location": "Hanoi",
+    "salary": "$1500 - $2500",
+    "description": "Manage our cloud infrastructure on AWS. Strong experience with Docker, Kubernetes, CI/CD pipelines, and infrastructure as code (Terraform).",
+    "skills": ["AWS", "Docker", "Kubernetes", "CI/CD", "Linux", "Terraform"]
+  }
+]

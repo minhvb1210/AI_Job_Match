@@ -1,0 +1,142 @@
+# AI Recruitment Platform - Graduation Project
+
+A professional, full-stack recruitment solution powered by Artificial Intelligence for automated CV matching and talent discovery.
+
+## 1. Project Overview
+The **AI Recruitment Platform** is designed to eliminate the manual effort in screening resumes. It uses advanced NLP (Natural Language Processing) to match candidate expertise with job requirements in real-time.
+
+### Key Features:
+*   **AI CV Matching**: Automatic extraction of skills from PDF/DOCX and scoring against job roles.
+*   **Intelligent Discovery**: Real-time job search with advanced filtering (Internal & External).
+*   **Recruiter Dashboard**: Comprehensive "Command Center" for managing job postings and applicants.
+*   **Self-Service Branding**: Recruiters can create and manage their company profiles.
+*   **Cross-Platform**: Fully compatible with Web and Android (APK).
+
+---
+
+## 2. System Requirements
+Before installation, ensure you have the following installed:
+*   **Python**: Version 3.10 or higher.
+*   **Flutter SDK**: Stable channel (Version 3.19+ recommended).
+*   **Node.js**: (Optional, for dependency management).
+*   **Android Studio**: Including Android SDK and Build Tools.
+*   **Database**: MySQL 8.0 or SQLite (default for development).
+
+---
+
+## 3. Installation Steps
+
+### Backend Setup (FastAPI)
+1. Navigate to the backend directory:
+   ```bash
+   cd backend
+   ```
+2. Create a virtual environment:
+   ```bash
+   python -m venv venv
+   source venv/bin/activate  # On Windows: venv\Scripts\activate
+   ```
+3. Install dependencies:
+   ```bash
+   pip install -r requirements.txt
+   ```
+4. Start the server:
+   ```bash
+   uvicorn app.main:app --reload
+   ```
+   *Default API URL: `http://127.0.0.1:8000`*
+
+### Database Setup
+1. Open your MySQL client.
+2. Create a new database:
+   ```sql
+   CREATE DATABASE ai_recruitment;
+   ```
+3. (Optional) Initialize data:
+   ```bash
+   python seed_db.py
+   ```
+
+### Frontend Setup (Flutter)
+1. Navigate to the frontend directory:
+   ```bash
+   cd ai_job_match
+   ```
+2. Install Flutter dependencies:
+   ```bash
+   flutter pub get
+   ```
+3. Run the Web version:
+   ```bash
+   flutter run -d chrome
+   ```
+4. Build the Android APK:
+   ```bash
+   flutter build apk --release
+   ```
+
+### API Configuration (For Mobile Testing)
+To connect a physical Android device to the backend, you must update the API address:
+1. Open `lib/services/api_service.dart`.
+2. Find the `baseUrl` variable.
+3. Change it to your local machine's IP address:
+   ```dart
+   static const String baseUrl = 'http://192.168.x.x:8000';
+   ```
+
+---
+
+## 4. Demo Accounts
+Use these credentials to explore the system:
+
+| Role | Email | Password |
+| :--- | :--- | :--- |
+| **Candidate** | `demo_candidate@test.com` | `123456` |
+| **Recruiter** | `recruiter@test.com` | `123456` |
+
+---
+
+## 5. How to Use the System
+
+### Candidate Flow:
+1. **Login** to the Candidate Hub.
+2. **Upload CV**: Click "Upload New CV" to let the AI analyze your skills.
+3. **AI Matches**: View jobs ranked by their compatibility score.
+4. **Apply**: Click "Apply Now" to submit your profile to an employer.
+
+### Recruiter Flow:
+1. **Login** to the Employer Dashboard.
+2. **Brand Profile**: Complete your company information first.
+3. **Post Job**: Create a new listing with specific skill requirements.
+4. **Review**: Open "Review Applicants" to see AI-ranked candidates and schedule interviews.
+
+---
+
+## 6. APK Installation Guide
+1. After building, find the file at:
+   `build/app/outputs/flutter-apk/app-release.apk`
+2. Transfer the file to your Android phone.
+3. Enable "Install from Unknown Sources" in your phone settings.
+4. Open the file and follow the prompts to install.
+
+---
+
+## 7. Troubleshooting
+
+*   **'flutter' is not recognized**: Ensure you have added the Flutter `bin` folder to your system PATH.
+*   **Android SDK Missing**: Open Android Studio → SDK Manager → Ensure "Android SDK Command-line Tools" is checked.
+*   **CORS Errors**: Ensure the backend allows requests from your frontend port (configured in `main.py`).
+*   **Connection Refused**: If testing on mobile, ensure both the PC and Phone are on the **same Wi-Fi network**.
+
+---
+
+## 8. Important Notes
+*   **Order of Execution**: Always start the **Backend** before the **Frontend**.
+*   **AI Engine**: The matching score is most accurate when CVs are uploaded in PDF format.
+*   **Production**: For a real production environment, ensure you update the `JWT_SECRET_KEY` in the backend `.env` file.
+
+---
+
+**Project Status**: Graduation Ready 🎓
+**Author**: Graduation Project Candidate
+**Date**: April 28, 2026
