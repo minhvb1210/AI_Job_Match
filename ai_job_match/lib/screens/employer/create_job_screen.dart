@@ -1,0 +1,223 @@
+import 'package:flutter/material.dart';
+import 'package:shadcn_ui/shadcn_ui.dart';
+import 'package:go_router/go_router.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:google_fonts/google_fonts.dart';
+
+import '../../services/job_service.dart';
+import '../../services/company_service.dart';
+import '../../services/api_service.dart';
+import '../../theme/app_colors.dart';
+
+class CreateJobScreen extends StatefulWidget {
+  const CreateJobScreen({super.key});
+
+  @override
+  State<CreateJobScreen> createState() => _CreateJobScreenState();
+}
+
+class _CreateJobScreenState extends State<CreateJobScreen> {
+  final _titleCtrl = TextEditingController();
+  final _companyCtrl = TextEditingController();
+  final _locationCtrl = TextEditingController();
+  final _salaryCtrl = TextEditingController();
+  final _descCtrl = TextEditingController();
+  final _skillsCtrl = TextEditingController();
+  
+  String _selectedCategory = 'IT';
+  String _selectedJobType = 'Full-time';
+  String _selectedExperience = 'Middle';
+  
+  final List<String> _categories = ['IT', 'Marketing', 'Sales', 'Finance', 'Design', 'Other'];
+  final List<String> _jobTypes = ['Full-time', 'Part-time', 'Remote', 'Internship'];
+  final List<String> _experienceLevels = ['Intern', 'Fresher', 'Junior', 'Middle', 'Senior', 'Manager'];
+
+  bool _isSubmitting = false;
+  final _jobService = JobService();
+  final _companyService = CompanyService();
+
+  Future<void> _submitJob() async {
+    if (_titleCtrl.text.isEmpty || _companyCtrl.text.isEmpty) {
+       ShadToaster.of(context).show(const ShadToast.destructive(title: Text("Missing Data"), description: Text("Please fill in the job title and company name.")));
+       return;
+    }
+
+    setState(() => _isSubmitting = true);
+    
+    try {
+      final company = await _companyService.getMyCompany();
+      if (company == null || company.isEmpty) {
+        ShadToaster.of(context).show(const ShadToast.destructive(
+          title: Text("Action Blocked"), 
+          description: Text("Please create a company profile first.")
+        ));
+        setState(() => _isSubmitting = false);
+        if (mounted) context.go('/recruiter'); 
+        return;
+      }
+
+      await _jobService.createJob({
+        'title': _titleCtrl.text,
+        'company': _companyCtrl.text,
+        'location': _locationCtrl.text,
+        'salary': _salaryCtrl.text,
+        'description': _descCtrl.text,
+        'skills': _skillsCtrl.text,
+        'category': _selectedCategory,
+        'job_type': _selectedJobType,
+        'experience_level': _selectedExperience,
+      });
+
+      ShadToaster.of(context).show(const ShadToast(title: Text("Position Published"), description: Text("Your job posting is now active on the platform.")));
+      if (mounted) context.go('/recruiter');
+    } catch (e) {
+      ShadToaster.of(context).show(ShadToast.destructive(title: Text("Error"), description: Text(ApiService.errorMessage(e))));
+    } finally {
+      setState(() => _isSubmitting = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      appBar: AppBar(
+        title: Text('Post New Job', style: GoogleFonts.outfit(fontWeight: FontWeight.bold)),
+        backgroundColor: Colors.white,
+        foregroundColor: AppColors.textPrimary,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(LucideIcons.arrowLeft),
+          onPressed: () => context.go('/recruiter'),
+        ),
+      ),
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 800),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(40),
+            child: Container(
+              padding: const EdgeInsets.all(40),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(32),
+                border: Border.all(color: const Color(0xFFE2E8F0)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text("Job Details", style: GoogleFonts.outfit(fontSize: 24, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 8),
+                  const Text("Fill in the information below to post a new job opportunity.", style: TextStyle(color: AppColors.textSecondary)),
+                  const SizedBox(height: 40),
+                  
+                  _buildLabel("Job Title"),
+                  ShadInput(
+                    controller: _titleCtrl, 
+                    placeholder: const Text("e.g. Senior Software Engineer"),
+                  ),
+                  const SizedBox(height: 24),
+                  
+                  _buildLabel("Company Name"),
+                  ShadInput(
+                    controller: _companyCtrl, 
+                    placeholder: const Text("Enter your company name"),
+                  ),
+                  const SizedBox(height: 24),
+                  
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _buildLabel("Location"),
+                            ShadInput(
+                              controller: _locationCtrl, 
+                              placeholder: const Text("e.g. Remote, New York"),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _buildLabel("Salary Range"),
+                            ShadInput(
+                              controller: _salaryCtrl, 
+                              placeholder: const Text("e.g. \$100k - \$150k"),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+                  
+                  _buildLabel("Description"),
+                  ShadInput(
+                    controller: _descCtrl, 
+                    placeholder: const Text("Detailed job description and responsibilities..."),
+                    maxLines: 6,
+                  ),
+                  const SizedBox(height: 24),
+                  
+                  _buildLabel("Required Skills"),
+                  ShadInput(
+                    controller: _skillsCtrl, 
+                    placeholder: const Text("e.g. Flutter, Node.js, AWS (comma separated)"),
+                  ),
+                  const SizedBox(height: 32),
+                  
+                  Row(
+                    children: [
+                      Expanded(child: _buildSelect('Category', _selectedCategory, _categories, (val) => setState(() => _selectedCategory = val!))),
+                      const SizedBox(width: 12),
+                      Expanded(child: _buildSelect('Job Type', _selectedJobType, _jobTypes, (val) => setState(() => _selectedJobType = val!))),
+                      const SizedBox(width: 12),
+                      Expanded(child: _buildSelect('Experience', _selectedExperience, _experienceLevels, (val) => setState(() => _selectedExperience = val!))),
+                    ],
+                  ),
+                  
+                  const SizedBox(height: 48),
+                  
+                  ShadButton(
+                    onPressed: _isSubmitting ? null : _submitJob,
+                    size: ShadButtonSize.lg,
+                    child: _isSubmitting 
+                      ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                      : const Text("Post Job Listing"),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLabel(String text) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Text(text, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppColors.textPrimary)),
+    );
+  }
+
+  Widget _buildSelect(String label, String value, List<String> items, Function(String?) onChanged) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildLabel(label),
+        ShadSelect<String>(
+          initialValue: value,
+          options: items.map((e) => ShadOption(value: e, child: Text(e))).toList(),
+          onChanged: onChanged,
+          selectedOptionBuilder: (context, value) => Text(value),
+        ),
+      ],
+    );
+  }
+}

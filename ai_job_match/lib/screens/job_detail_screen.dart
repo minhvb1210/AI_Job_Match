@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import '../providers/job_provider.dart';
 import '../services/job_service.dart';
+import '../services/application_service.dart';
 
 class JobDetailScreen extends StatefulWidget {
   final int jobId;
@@ -56,8 +57,37 @@ class _JobDetailScreenState extends State<JobDetailScreen> {
               Expanded(
                 child: ShadButton(
                   child: const Text("Apply Now"),
-                  onPressed: () {
-                    ShadToaster.of(context).show(const ShadToast(title: Text("Feature Coming Soon"), description: Text("Application submission will be enabled in the next update.")));
+                  onPressed: () async {
+                    try {
+                      final provider = Provider.of<JobProvider>(context, listen: false);
+                      final score = provider.getScore(widget.jobId) ?? 0.0;
+                      
+                      await ApplicationService().applyForJob(
+                        jobId: widget.jobId,
+                        matchScore: score,
+                      );
+                      
+                      if (mounted) {
+                        showDialog(
+                          context: context,
+                          builder: (context) => AlertDialog(
+                            title: const Text("Application Successful!"),
+                            content: const Text("Your profile has been sent to the recruiter. You will receive an email if they shortlist you."),
+                            actions: [
+                              ShadButton(
+                                onPressed: () => Navigator.pop(context),
+                                child: const Text("Got it"),
+                              ),
+                            ],
+                          ),
+                        );
+                      }
+                    } catch (e) {
+                      ShadToaster.of(context).show(ShadToast.destructive(
+                        title: const Text("Error"),
+                        description: Text("Failed to apply: $e"),
+                      ));
+                    }
                   },
                 ),
               ),

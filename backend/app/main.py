@@ -7,7 +7,7 @@ from fastapi.responses import JSONResponse
 
 from app.core.database import engine, Base
 from app.core.responses import error_response
-from app.routers import auth, jobs, cv, applications, companies, notifications, ai, interviews, dashboard
+from app.routers import auth, jobs, cv, applications, companies, notifications, ai, interviews, dashboard, profile
 
 # ── Ensure tables exist ──────────────────────────────────────────────────────
 Base.metadata.create_all(bind=engine)
@@ -22,12 +22,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5000",
-        "http://127.0.0.1:5000",
-        "http://localhost:8000",
-        "http://127.0.0.1:8000",
-    ],
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -45,6 +40,7 @@ app.include_router(notifications.router)
 app.include_router(ai.router)
 app.include_router(interviews.router)
 app.include_router(dashboard.router)
+app.include_router(profile.router)
 
 
 # ── Global Exception Handlers ─────────────────────────────────────────────────

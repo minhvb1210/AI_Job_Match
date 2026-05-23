@@ -1,11 +1,21 @@
-// lib/services/api_service.dart
-// Central Dio HTTP client with auth header injection and error handling.
-
 import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter/foundation.dart';
+import 'dart:io';
 
 class ApiService {
-  static const String baseUrl = 'http://192.168.2.182:8000';
+  static String get baseUrl {
+    if (kIsWeb) {
+      // For Flutter Web, use 127.0.0.1 to avoid some localhost issues in Chrome
+      return 'http://127.0.0.1:8000';
+    } else if (Platform.isAndroid) {
+      // Android emulator address for localhost
+      return 'http://10.0.2.2:8000';
+    } else {
+      // iOS Simulator or other platforms
+      return 'http://localhost:8000';
+    }
+  }
 
   static Dio _buildDio({String? token}) {
     final dio = Dio(
@@ -24,11 +34,19 @@ class ApiService {
     // Response interceptor — logging and error check
     dio.interceptors.add(
       InterceptorsWrapper(
+        onRequest: (options, handler) {
+          debugPrint('🚀 API [${options.method}] => ${options.baseUrl}${options.path}');
+          if (options.queryParameters.isNotEmpty) debugPrint('❓ Query: ${options.queryParameters}');
+          debugPrint('🔑 Auth: ${options.headers['Authorization'] != null ? 'PRESENT' : 'MISSING'}');
+          return handler.next(options);
+        },
         onResponse: (response, handler) {
-          // We will NOT unwrap 'data' here anymore to follow the USER's strict parsing requirement
+          debugPrint('✅ API [${response.statusCode}] <= ${response.requestOptions.path}');
           return handler.next(response);
         },
         onError: (DioException e, ErrorInterceptorHandler handler) {
+          debugPrint('❌ API ERROR [${e.response?.statusCode}] <= ${e.requestOptions.path}');
+          debugPrint('❌ Response Body: ${e.response?.data}');
           return handler.next(e);
         },
       ),
@@ -54,10 +72,23 @@ class ApiService {
       if (data is Map && data['message'] != null) {
         return data['message'].toString();
       }
-      if (e.response?.statusCode != null) {
-        return 'Server error ${e.response!.statusCode}';
+      
+      switch (e.type) {
+        case DioExceptionType.connectionTimeout:
+          return "Connection timed out. Check your server/network.";
+        case DioExceptionType.sendTimeout:
+          return "Send timeout.";
+        case DioExceptionType.receiveTimeout:
+          return "Server is taking too long to respond.";
+        case DioExceptionType.badResponse:
+          return "Server error: ${e.response?.statusCode}";
+        case DioExceptionType.cancel:
+          return "Request was cancelled.";
+        case DioExceptionType.connectionError:
+          return "Connection error. Ensure backend is running at $baseUrl";
+        default:
+          return e.message ?? "An unexpected network error occurred.";
       }
-      return e.message ?? 'Network error';
     }
     return e.toString();
   }

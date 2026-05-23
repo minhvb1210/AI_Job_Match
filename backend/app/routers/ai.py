@@ -253,3 +253,44 @@ def get_cv_suggestions(
         data={"suggestions": suggestions},
         message="AI CV suggestions generated"
     )
+
+@router.get("/recommendations")
+def get_ai_recommendations(
+    db: Session = Depends(get_db), 
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Get top AI job matches for the current candidate based on their CV.
+    """
+    from app.services.ai_engine import match_cv_to_jobs
+    
+    profile = db.query(CandidateProfile).filter(CandidateProfile.user_id == current_user.id).first()
+    if not profile or not (profile.skills_text or "").strip():
+        return success_response(data=[], message="No CV profile found")
+
+    jobs = db.query(Job).all()
+    if not jobs:
+        return success_response(data=[], message="No jobs available")
+
+    results = match_cv_to_jobs(profile.skills_text, jobs)
+
+    formatted_results = []
+    for res in results:
+        job = res["job"]
+        formatted_results.append({
+            "score":          res["score"],
+            "missing_skills": res.get("missing_skills", []),
+            "job": {
+                "id":       job.id,
+                "title":    job.title,
+                "company":  job.company,
+                "location": job.location,
+                "salary":   job.salary,
+                "skills":   job.skills.split(",") if job.skills else [],
+            },
+        })
+
+    return success_response(
+        data=formatted_results,
+        message=f"Found {len(formatted_results)} AI recommendations"
+    )

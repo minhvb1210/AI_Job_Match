@@ -12,6 +12,7 @@ from app.core.database import Base
 class UserRole(str, enum.Enum):
     candidate = "candidate"
     recruiter = "recruiter"
+    employer  = "employer"   # alias — treated identically to recruiter
     admin     = "admin"
 
 
@@ -40,12 +41,20 @@ class User(Base):
     hashed_password = Column(String(255))
     # native_enum=False → stored as VARCHAR in MySQL (no ALTER TABLE needed for new values)
     role            = Column(SAEnum(UserRole, native_enum=False), default=UserRole.candidate)
+    
+    # Auth Provider
+    auth_provider = Column(String(50), default="email") # "email" or "google"
+    google_id     = Column(String(255), unique=True, index=True, nullable=True)
 
     # Common Info
     full_name    = Column(String(255), nullable=True)
     phone_number = Column(String(50), nullable=True)
     address      = Column(String(500), nullable=True)
     avatar_url   = Column(String(500), nullable=True)
+    bio          = Column(Text, nullable=True)
+    date_of_birth = Column(String(20), nullable=True)  # YYYY-MM-DD
+    website      = Column(String(500), nullable=True)
+    industry     = Column(String(255), nullable=True)
 
     # Legacy employer fields (kept for backward compat)
     company_name        = Column(String(255), nullable=True)

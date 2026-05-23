@@ -69,3 +69,67 @@ def login(user: UserLogin, db: Session = Depends(get_db)):
         data={"access_token": access_token, "token_type": "bearer"},
         message="Login successful",
     )
+
+
+from app.services.auth_google import GoogleAuthService
+from pydantic import BaseModel
+
+class GoogleLoginRequest(BaseModel):
+    token: str
+    role: str = "candidate"
+
+
+@router.post("/google")
+def google_login(req: GoogleLoginRequest, db: Session = Depends(get_db)):
+    # 1. Verify Firebase token
+    google_data = GoogleAuthService.verify_firebase_token(req.token)
+    email = google_data["email"]
+    
+    # 2. Find or create user
+    user = db.query(User).filter(User.email == email).first()
+    
+    if not user:
+        # Normalize: if frontend sends "employer", map to "recruiter" for consistency
+        requested_role = req.role
+        if requested_role == "employer":
+            requested_role = "recruiter"
+        print(f"DEBUG GOOGLE LOGIN: Creating new user - email={email}, requested_role={req.role!r}, normalized_role={requested_role!r}")
+        # Create new account with the requested role
+        user = User(
+            email=email,
+            full_name=google_data["name"],
+            avatar_url=google_data["picture"],
+            google_id=google_data["uid"],
+            auth_provider="google",
+            role=UserRole(requested_role)
+        )
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+    else:
+        # Update existing user if they switch to Google
+        user.google_id = google_data["uid"]
+        user.auth_provider = "google"
+        if not user.avatar_url:
+            user.avatar_url = google_data["picture"]
+        db.commit()
+
+    # 3. Create platform access token
+    access_token = create_access_token(
+        data={"sub": user.email, "role": user.role.value if user.role else "candidate", "id": user.id}
+    )
+    
+    return success_response(
+        data={
+            "access_token": access_token, 
+            "token_type": "bearer",
+            "user": {
+                "id": user.id,
+                "email": user.email,
+                "role": user.role,
+                "full_name": user.full_name,
+                "avatar_url": user.avatar_url
+            }
+        },
+        message="Google login successful",
+    )

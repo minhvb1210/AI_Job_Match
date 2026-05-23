@@ -125,6 +125,7 @@ def save_profile(profile_update: ProfileUpdate, db: Session = Depends(get_db), c
     return success_response(message="Profile saved successfully.")
 
 @router.get("/my-profile")
+@router.get("/my-cv")
 def get_my_profile(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     profile = db.query(CandidateProfile).filter(CandidateProfile.user_id == current_user.id).first()
     if not profile:
@@ -132,7 +133,11 @@ def get_my_profile(db: Session = Depends(get_db), current_user: User = Depends(g
         db.add(profile)
         db.commit()
         db.refresh(profile)
-    return success_response(data=schemas.CandidateProfileResponse.model_validate(profile).model_dump())
+    
+    # Return standard response plus 'raw_text' alias for frontend compatibility
+    data = schemas.CandidateProfileResponse.model_validate(profile).model_dump()
+    data['raw_text'] = profile.skills_text
+    return success_response(data=data)
 
 
 @router.get("/me")

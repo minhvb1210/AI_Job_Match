@@ -1,58 +1,68 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
+from datetime import datetime
+from pydantic import BaseModel
+
 from app.core.database import get_db
-from app.core.responses import success_response, error_response
-from app.core.auth import get_current_user
-from app.models.models import Application, Interview, User, ApplicationStatus, Notification
-from app.schemas.schemas import InterviewCreate, InterviewResponse
-import datetime
+from app.core.responses import success_response
+from app.models.models import Application, User, Job, Interview, ApplicationStatus, InterviewStatus
+from app.core.auth import get_current_employer
+from app.services.email_service import EmailService
+import asyncio
 
 router = APIRouter(prefix="/interviews", tags=["interviews"])
 
-@router.post("/create")
-def create_interview(
+from app.schemas.schemas import InterviewCreate
+
+@router.post("/schedule")
+async def schedule_interview(
     data: InterviewCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_employer)
 ):
-    """
-    Schedule an interview for an application.
-    Expected Role: Recruiter or Admin (checking if they own the job)
-    """
-    # 1. Check application & ownership
+    # 1. Verify application ownership
     app = db.query(Application).filter(Application.id == data.application_id).first()
     if not app:
         raise HTTPException(status_code=404, detail="Application not found")
-
-    # Only the employer of the job (or Admin) can schedule
-    if current_user.role != "admin" and app.job.employer_id != current_user.id:
-        raise HTTPException(status_code=403, detail="Not authorized to schedule for this job")
-
-    # 2. Create the Interview
-    new_interview = Interview(
-        application_id=data.application_id,
-        scheduled_at=data.scheduled_at,
-        location=data.location,
-        notes=data.notes,
-        status="scheduled"
-    )
-    db.add(new_interview)
     
-    # 3. Update Application Status to interviewing
+    job = db.query(Job).filter(Job.id == app.job_id).first()
+    if job.employer_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized")
+
+    # 2. Update application status
     app.status = ApplicationStatus.interviewing
     
-    # 4. Create Notification for the candidate
-    notif = Notification(
-        user_id=app.candidate_id,
-        message=f"You have a new interview scheduled for {app.job.title} at {data.scheduled_at.strftime('%Y-%m-%d %H:%M')}.",
-        is_read=False
+    # 3. Create Interview record
+    try:
+        dt = datetime.fromisoformat(data.scheduled_time.replace("Z", "+00:00"))
+    except:
+        raise HTTPException(status_code=400, detail="Invalid date format")
+
+    interview = Interview(
+        application_id=app.id,
+        scheduled_time=dt,
+        location=data.location,
+        note=data.note,
+        status=InterviewStatus.scheduled
     )
-    db.add(notif)
-    
+    db.add(interview)
     db.commit()
-    db.refresh(new_interview)
-    
+    db.refresh(interview)
+
+    # 4. Send Email to Candidate
+    candidate = db.query(User).filter(User.id == app.candidate_id).first()
+    if candidate:
+        asyncio.create_task(EmailService.send_interview_invitation(
+            candidate_email=candidate.email,
+            candidate_name=candidate.full_name or "Candidate",
+            job_title=job.title,
+            interview_date=dt.strftime("%Y-%m-%d"),
+            interview_time=dt.strftime("%H:%M"),
+            location=data.location,
+            recruiter_name=current_user.full_name or "Recruiter"
+        ))
+
     return success_response(
-        data=new_interview,
-        message="Interview scheduled successfully"
+        data={"interview_id": interview.id, "status": "scheduled"},
+        message="Interview scheduled and invitation email sent."
     )

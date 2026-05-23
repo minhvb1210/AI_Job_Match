@@ -79,7 +79,7 @@ class ApplicationService {
     String? note,
   }) async {
     final dio = await ApiService.authenticated();
-    final response = await dio.post('/interviews/create', data: {
+    final response = await dio.post('/interviews/schedule', data: {
       'application_id': applicationId,
       'scheduled_time': time.toIso8601String(),
       'location': location,

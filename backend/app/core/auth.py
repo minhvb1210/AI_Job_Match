@@ -57,9 +57,13 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
     return user
 
 def get_current_employer(current_user: User = Depends(get_current_user)):
-    if current_user.role != "recruiter":
+    # Accept both "recruiter" and "employer" role values for consistency
+    role_value = current_user.role.value if hasattr(current_user.role, 'value') else str(current_user.role)
+    allowed_roles = ("recruiter", "employer")
+    print(f"DEBUG AUTH: get_current_employer — user_id={current_user.id}, email={current_user.email}, role_raw={current_user.role!r}, role_value={role_value!r}")
+    if role_value not in allowed_roles:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Operation not permitted. Requires employer rights."
+            detail=f"Operation not permitted. Requires employer/recruiter role. Your role: '{role_value}'."
         )
     return current_user

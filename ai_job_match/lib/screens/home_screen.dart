@@ -2,7 +2,7 @@
 // CV upload screen + animated job recommendation list.
 
 import 'package:flutter/material.dart';
-import 'package:file_picker/file_picker.dart';
+import 'package:file_picker/file_picker.dart' as fp;
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:percent_indicator/linear_percent_indicator.dart';
@@ -64,8 +64,8 @@ class _HomeBodyState extends State<_HomeBody> with TickerProviderStateMixin {
   Future<void> _pickAndUpload(BuildContext context) async {
     try {
       final provider = context.read<CvProvider>();
-      final result = await FilePicker.platform.pickFiles(
-        type: FileType.custom,
+      final result = await fp.FilePicker.pickFiles(
+        type: fp.FileType.custom,
         allowedExtensions: ['pdf', 'docx', 'png', 'jpg', 'jpeg'],
         withData: true,
       );

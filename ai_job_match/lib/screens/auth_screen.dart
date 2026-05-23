@@ -1,9 +1,11 @@
-import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../services/auth_service.dart';
+import '../theme/app_colors.dart';
 
 class AuthScreen extends StatefulWidget {
   final bool isLogin;
@@ -13,179 +15,325 @@ class AuthScreen extends StatefulWidget {
   State<AuthScreen> createState() => _AuthScreenState();
 }
 
-class _AuthScreenState extends State<AuthScreen> {
+class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateMixin {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   String _role = 'candidate';
   bool _isLoading = false;
+  bool _showPassword = false;
+  late AnimationController _animationController;
+  late Animation<double> _fadeAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _animationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 800),
+    );
+    _fadeAnimation = CurvedAnimation(
+      parent: _animationController,
+      curve: Curves.easeIn,
+    );
+    _animationController.forward();
+  }
+
+  @override
+  void dispose() {
+    _animationController.dispose();
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
 
   void _submit() async {
     if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
-       ShadToaster.of(context).show(
-         const ShadToast.destructive(
-           title: Text('Error'),
-           description: Text('Please fill in all fields'),
-         ),
-       );
-       return;
+      ShadToaster.of(context).show(
+        const ShadToast.destructive(
+          title: Text('Required Fields'),
+          description: Text('Please enter your email and password to continue.'),
+        ),
+      );
+      return;
     }
 
     setState(() => _isLoading = true);
     final auth = Provider.of<AuthService>(context, listen: false);
     bool success = false;
-    if (widget.isLogin) {
-      success = await auth.login(
-        _emailController.text.trim(), 
-        _passwordController.text,
-      );
-    } else {
-      final role = _role;
-      final normalizedRole = role.toLowerCase().trim();
-      
-      if (normalizedRole != 'candidate' && normalizedRole != 'recruiter') {
-        setState(() => _isLoading = false);
-        ShadToaster.of(context).show(
-          const ShadToast.destructive(
-            title: Text('Invalid Role'),
-            description: Text('Please select either Candidate or Employer.'),
-          ),
+    
+    try {
+      if (widget.isLogin) {
+        success = await auth.login(
+          _emailController.text.trim(),
+          _passwordController.text,
         );
-        return;
+      } else {
+        success = await auth.register(
+          _emailController.text.trim(),
+          _passwordController.text,
+          _role,
+        );
       }
-      success = await auth.register(
-        _emailController.text.trim(), 
-        _passwordController.text, 
-        normalizedRole,
-      );
+    } catch (e) {
+      success = false;
     }
 
+    if (!mounted) return;
     setState(() => _isLoading = false);
 
     if (success) {
-      if (auth.role == 'recruiter') {
-        context.go('/recruiter');
-      } else {
-        context.go('/candidate');
-      }
+      context.go(auth.role == 'recruiter' || auth.role == 'employer' ? '/recruiter' : '/candidate');
     } else {
-      if (mounted) {
-        ShadToaster.of(context).show(
-          ShadToast.destructive(
-             title: const Text('Authentication Error'),
-             description: Text(widget.isLogin ? 'Login failed. Please check your credentials.' : 'Registration failed.'),
-          ),
-        );
-      }
+      ShadToaster.of(context).show(
+        ShadToast.destructive(
+          title: const Text('Authentication Failed'),
+          description: Text(widget.isLogin 
+            ? 'Invalid email or password. Please try again.' 
+            : 'Email might already be registered.'),
+        ),
+      );
+    }
+  }
+
+  void _handleGoogleSignIn() async {
+    setState(() => _isLoading = true);
+    final auth = Provider.of<AuthService>(context, listen: false);
+    
+    final success = await auth.signInWithGoogle(_role);
+    
+    if (!mounted) return;
+    setState(() => _isLoading = false);
+
+    if (success) {
+      context.go(auth.role == 'recruiter' || auth.role == 'employer' ? '/recruiter' : '/candidate');
+    } else {
+      ShadToaster.of(context).show(
+        const ShadToast.destructive(
+          title: Text('Google Sign-In Failed'),
+          description: Text('Could not complete Google Sign-In. Please try again.'),
+        ),
+      );
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = ShadTheme.of(context);
+    final isMobile = MediaQuery.of(context).size.width < 900;
+
     return Scaffold(
-      body: Stack(
+      backgroundColor: AppColors.background,
+      body: Row(
         children: [
-          // Background Gradient Ornaments
-          Positioned(top: -100, left: -100, child: _buildBlob(const Color(0xFF6C63FF))),
-          Positioned(bottom: -100, right: -100, child: _buildBlob(const Color(0xFF00FFC2))),
-          
-          Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 450),
-              child: ShadCard(
-                padding: const EdgeInsets.all(40.0),
-                backgroundColor: Colors.white.withOpacity(0.05),
-                border: ShadBorder.all(color: Colors.white.withOpacity(0.1)),
-                radius: const BorderRadius.all(Radius.circular(30)),
-                child: Container(
-                  decoration: BoxDecoration(
-                    borderRadius: const BorderRadius.all(Radius.circular(30)),
-                    color: Colors.black.withOpacity(0.2),
-                  ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.auto_awesome, size: 60, color: theme.colorScheme.primary),
-                      const SizedBox(height: 16),
-                      Text(
-                        widget.isLogin ? 'Welcome Back' : 'Get Started',
-                        style: theme.textTheme.h2.copyWith(color: Colors.white),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'AI-Powered Job Matching',
-                        style: theme.textTheme.muted.copyWith(color: Colors.white70),
-                      ),
-                      const SizedBox(height: 40),
-                      
-                      ShadInput(
-                        controller: _emailController,
-                        placeholder: const Text('Email Address'),
-                        leading: const Padding(
-                          padding: EdgeInsets.only(right: 8.0),
-                          child: Icon(Icons.email_outlined, size: 18),
-                        ),
-                        keyboardType: TextInputType.emailAddress,
-                      ),
-                      const SizedBox(height: 20),
-                      
-                      ShadInput(
-                        controller: _passwordController,
-                        placeholder: const Text('Password'),
-                        leading: const Padding(
-                          padding: EdgeInsets.only(right: 8.0),
-                          child: Icon(Icons.lock_outline, size: 18),
-                        ),
-                        obscureText: true,
-                      ),
-                      
-                      if (!widget.isLogin) ...[
-                        const SizedBox(height: 20),
-                        ShadSelect<String>(
-                          placeholder: const Text('Select your role'),
-                          initialValue: _role,
-                          options: const [
-                            ShadOption(value: 'candidate', child: Text('I am a Candidate')),
-                            ShadOption(value: 'recruiter', child: Text('I am an Employer')),
-                          ],
-                          onChanged: (v) => setState(() => _role = v!),
-                          selectedOptionBuilder: (context, value) => Text(value == 'candidate' ? 'I am a Candidate' : 'I am an Employer'),
-                        ),
-                      ],
-                      
-                      const SizedBox(height: 32),
-                      
-                      ShadButton(
-                        width: double.infinity,
-                        onPressed: _isLoading ? null : _submit,
-                        child: _isLoading 
-                          ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                          : Text(widget.isLogin ? 'Sign In' : 'Create Account'),
-                      ),
-                      
-                      const SizedBox(height: 24),
-                      
-                      Row(
+          if (!isMobile)
+            Expanded(
+              flex: 5,
+              child: Stack(
+                children: [
+                  Container(
+                    decoration: const BoxDecoration(
+                      gradient: AppColors.premiumGradient,
+                    ),
+                    child: Center(
+                      child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Text(
-                            widget.isLogin ? "New here? " : "Already have an account? ",
-                            style: theme.textTheme.muted.copyWith(color: Colors.white60),
+                          const Icon(LucideIcons.sparkles, size: 80, color: Colors.white),
+                          const SizedBox(height: 32),
+                          const Text(
+                            'AI Job Match Platform',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 42,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: -1,
+                            ),
                           ),
-                          ShadButton.link(
-                            padding: EdgeInsets.zero,
-                            onPressed: () {
-                              if (widget.isLogin) {
-                                context.go('/register');
-                              } else {
-                                context.go('/login');
-                              }
-                            },
-                            child: Text(widget.isLogin ? "Sign Up" : "Sign In"),
+                          const SizedBox(height: 16),
+                          Text(
+                            'Connecting top talent with elite companies through AI.',
+                            style: TextStyle(
+                              color: Colors.white.withOpacity(0.8),
+                              fontSize: 18,
+                            ),
                           ),
                         ],
-                      )
-                    ],
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    top: 40,
+                    left: 40,
+                    child: Row(
+                      children: [
+                        const Icon(LucideIcons.briefcase, color: Colors.white, size: 28),
+                        const SizedBox(width: 12),
+                        Text(
+                          'Antigravity AI',
+                          style: GoogleFonts.outfit(
+                            color: Colors.white,
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          Expanded(
+            flex: 4,
+            child: Container(
+              color: Colors.white,
+              child: Center(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 20),
+                  child: FadeTransition(
+                    opacity: _fadeAnimation,
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 400),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          if (isMobile) ...[
+                            const Center(
+                              child: Icon(LucideIcons.briefcase, color: AppColors.primary, size: 48),
+                            ),
+                            const SizedBox(height: 32),
+                          ],
+                          Text(
+                            widget.isLogin ? 'Welcome back' : 'Create an account',
+                            style: theme.textTheme.h2.copyWith(
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.textPrimary,
+                              letterSpacing: -0.5,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            widget.isLogin 
+                              ? 'Enter your credentials to access your account' 
+                              : 'Sign up to start your AI-powered career journey',
+                            style: theme.textTheme.muted.copyWith(color: AppColors.textSecondary),
+                          ),
+                          const SizedBox(height: 40),
+                          
+                          const Text('Email Address', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                          const SizedBox(height: 8),
+                          ShadInput(
+                            controller: _emailController,
+                            placeholder: const Text('name@example.com'),
+                            leading: const Padding(
+                              padding: EdgeInsets.symmetric(horizontal: 12),
+                              child: Icon(LucideIcons.mail, size: 16, color: AppColors.textPlaceholder),
+                            ),
+                          ),
+                          
+                          const SizedBox(height: 24),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              const Text('Password', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                              if (widget.isLogin)
+                                ShadButton.link(
+                                  padding: EdgeInsets.zero,
+                                  onPressed: () {},
+                                  child: const Text('Forgot password?', style: TextStyle(fontSize: 13)),
+                                ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          ShadInput(
+                            controller: _passwordController,
+                            placeholder: const Text('Enter your password'),
+                            obscureText: !_showPassword,
+                            leading: const Padding(
+                              padding: EdgeInsets.symmetric(horizontal: 12),
+                              child: Icon(LucideIcons.lock, size: 16, color: AppColors.textPlaceholder),
+                            ),
+                            trailing: IconButton(
+                              icon: Icon(_showPassword ? LucideIcons.eyeOff : LucideIcons.eye, size: 16, color: AppColors.textSecondary),
+                              onPressed: () => setState(() => _showPassword = !_showPassword),
+                            ),
+                          ),
+
+                          if (!widget.isLogin) ...[
+                            const SizedBox(height: 24),
+                            const Text('I am signing up as a', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                            const SizedBox(height: 12),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: _RoleCard(
+                                    title: 'Candidate',
+                                    icon: LucideIcons.user,
+                                    isSelected: _role == 'candidate',
+                                    onTap: () => setState(() => _role = 'candidate'),
+                                  ),
+                                ),
+                                const SizedBox(width: 16),
+                                Expanded(
+                                  child: _RoleCard(
+                                    title: 'Employer',
+                                    icon: LucideIcons.building,
+                                    isSelected: _role == 'recruiter',
+                                    onTap: () => setState(() => _role = 'recruiter'),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                          
+                          const SizedBox(height: 40),
+                          ShadButton(
+                            width: double.infinity,
+                            size: ShadButtonSize.lg,
+                            onPressed: _isLoading ? null : _submit,
+                            child: _isLoading 
+                              ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                              : Text(widget.isLogin ? 'Sign In' : 'Sign Up'),
+                          ),
+                          
+                          const SizedBox(height: 32),
+                          Row(
+                            children: [
+                              const Expanded(child: Divider()),
+                              Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 16),
+                                child: Text('OR CONTINUE WITH', style: theme.textTheme.small.copyWith(color: AppColors.textPlaceholder, fontSize: 10, fontWeight: FontWeight.bold)),
+                              ),
+                              const Expanded(child: Divider()),
+                            ],
+                          ),
+                          const SizedBox(height: 32),
+                          ShadButton.outline(
+                            width: double.infinity,
+                            leading: _isLoading 
+                              ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary))
+                              : const Icon(LucideIcons.globe, size: 18),
+                            onPressed: _isLoading ? null : _handleGoogleSignIn,
+                            child: Text(_isLoading ? 'Connecting Google...' : 'Continue with Google'),
+                          ),
+                          
+                          const SizedBox(height: 40),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(
+                                widget.isLogin ? "Don't have an account? " : "Already have an account? ",
+                                style: const TextStyle(color: AppColors.textSecondary),
+                              ),
+                              ShadButton.link(
+                                padding: EdgeInsets.zero,
+                                onPressed: () => context.go(widget.isLogin ? '/register' : '/login'),
+                                child: Text(widget.isLogin ? 'Sign up' : 'Sign in'),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
               ),
@@ -195,19 +343,49 @@ class _AuthScreenState extends State<AuthScreen> {
       ),
     );
   }
+}
 
-  Widget _buildBlob(Color color) {
-    return Container(
-      width: 300,
-      height: 300,
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.2),
-        shape: BoxShape.circle,
-      ),
-      child: Container(
+class _RoleCard extends StatelessWidget {
+  final String title;
+  final IconData icon;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  const _RoleCard({
+    required this.title,
+    required this.icon,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: color.withOpacity(0.1),
-          shape: BoxShape.circle,
+          color: isSelected ? AppColors.primary.withOpacity(0.05) : Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isSelected ? AppColors.primary : const Color(0xFFE2E8F0),
+            width: isSelected ? 2 : 1,
+          ),
+        ),
+        child: Column(
+          children: [
+            Icon(icon, color: isSelected ? AppColors.primary : AppColors.textSecondary, size: 24),
+            const SizedBox(height: 8),
+            Text(
+              title,
+              style: TextStyle(
+                color: isSelected ? AppColors.primary : AppColors.textPrimary,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                fontSize: 14,
+              ),
+            ),
+          ],
         ),
       ),
     );

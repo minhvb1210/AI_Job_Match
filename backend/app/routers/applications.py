@@ -42,6 +42,23 @@ def apply_for_job(
     db.add(new_app)
     db.commit()
     db.refresh(new_app)
+
+    # 3. Notify recruiter via Email
+    try:
+        from app.services.email_service import EmailService
+        import asyncio
+        recruiter = db.query(User).filter(User.id == job.employer_id).first()
+        if recruiter:
+            asyncio.create_task(EmailService.send_application_notification(
+                recruiter_email=recruiter.email,
+                candidate_name=current_user.full_name or current_user.email,
+                candidate_email=current_user.email,
+                job_title=job.title,
+                match_score=application.match_score
+            ))
+    except Exception as e:
+        print(f"Error sending email: {e}")
+
     return success_response(
         data=ApplicationResponse.model_validate(new_app).model_dump(),
         message="Application submitted successfully",
@@ -120,8 +137,12 @@ def get_applications_for_job(
             "status":           app.status.value if app.status else "pending",
             "match_score":      app.match_score or 0,
             "created_at":       app.created_at.isoformat() if app.created_at else None,
+            "applied_at":       app.created_at.strftime("%b %d, %Y") if app.created_at else "Unknown",
             "candidate_id":     candidate.id if candidate else None,
+            "candidate_name":   candidate.full_name if candidate else None,
             "candidate_email":  candidate.email if candidate else "Unknown",
+            "candidate_phone":  candidate.phone_number if candidate else None,
+            "candidate_avatar": candidate.avatar_url if candidate else None,
             "candidate_skills": cv_text[:500] if cv_text else "No profile provided",
             "missing_skills":   missing,
             "is_top_candidate": (i < 3),   # Top 3 highlighted with gold/silver/bronze

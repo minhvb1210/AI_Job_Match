@@ -28,6 +28,19 @@ def seed_database():
             db.add(candidate)
             db.flush()
             logger.info("Seeded candidate user")
+
+        # Demo Candidate
+        demo_candidate = db.query(User).filter(User.email == "demo_candidate@test.com").first()
+        if not demo_candidate:
+            demo_candidate = User(
+                email="demo_candidate@test.com",
+                hashed_password=default_password,
+                role=UserRole.candidate,
+                full_name="Demo Candidate"
+            )
+            db.add(demo_candidate)
+            db.flush()
+            logger.info("Seeded demo candidate user")
         
         # ── 2. Create Companies and Recruiters ───────────────────────
         companies_data = [
@@ -79,6 +92,15 @@ def seed_database():
             {"title": "UI/UX Designer", "category": "Design", "skills": "Figma,Adobe XD,Prototyping", "salary": "$70k - $110k", "type": "Remote", "company_idx": 4},
             {"title": "Product Manager", "category": "Other", "skills": "Agile,Scrum,Roadmapping", "salary": "$100k - $150k", "type": "Full-time", "company_idx": 2},
             {"title": "Full-stack Developer", "category": "IT", "skills": "Node.js,React,MongoDB", "salary": "$95k - $145k", "type": "Full-time", "company_idx": 5},
+            # ── Additional jobs for recruiter@test.com (company_idx=5) ──
+            {"title": "Python Backend Developer", "category": "IT", "skills": "Python,Django,PostgreSQL,Redis", "salary": "$90k - $130k", "type": "Full-time", "company_idx": 5},
+            {"title": "Data Engineer", "category": "IT", "skills": "Spark,Airflow,SQL,Python", "salary": "$110k - $160k", "type": "Full-time", "company_idx": 5},
+            {"title": "React Native Developer", "category": "IT", "skills": "React Native,TypeScript,Redux", "salary": "$85k - $125k", "type": "Remote", "company_idx": 5},
+            {"title": "AI/ML Engineer", "category": "AI", "skills": "Python,PyTorch,NLP,Computer Vision", "salary": "$120k - $175k", "type": "Remote", "company_idx": 5},
+            {"title": "QA Automation Engineer", "category": "IT", "skills": "Selenium,Cypress,Jest,Python", "salary": "$75k - $110k", "type": "Full-time", "company_idx": 5},
+            {"title": "Cybersecurity Analyst", "category": "IT", "skills": "SIEM,Penetration Testing,ISO 27001", "salary": "$100k - $150k", "type": "Full-time", "company_idx": 5},
+            {"title": "iOS Developer (Swift)", "category": "IT", "skills": "Swift,SwiftUI,Xcode,CoreData", "salary": "$95k - $140k", "type": "Part-time", "company_idx": 5},
+            {"title": "Technical Project Manager", "category": "Other", "skills": "Jira,Agile,Stakeholder Management", "salary": "$105k - $155k", "type": "Full-time", "company_idx": 5},
         ]
 
         for j_data in jobs_to_seed:
@@ -111,6 +133,15 @@ def seed_database():
             )
             db.add(profile)
             logger.info("Seeded candidate profile")
+        
+        demo_profile = db.query(CandidateProfile).filter(CandidateProfile.user_id == demo_candidate.id).first()
+        if not demo_profile:
+            demo_profile = CandidateProfile(
+                user_id=demo_candidate.id,
+                skills_text="Experienced Flutter developer with strong Dart and Firebase skills. Knowledgeable in Python and FastAPI for backend development. Passionate about AI and ML."
+            )
+            db.add(demo_profile)
+            logger.info("Seeded demo candidate profile")
         
         db.commit()
         print("Database re-seeded successfully.")

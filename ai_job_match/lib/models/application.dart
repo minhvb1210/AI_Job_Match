@@ -48,6 +48,10 @@ class ApplicantInfo {
   final String? createdAt;
   final int? candidateId;
   final String candidateEmail;
+  final String? candidateName;
+  final String? candidatePhone;
+  final String? candidateAvatar;
+  final String? appliedAt;
   final String candidateSkills;
   final List<String> missingSkills;
   final bool isTopCandidate;
@@ -60,6 +64,10 @@ class ApplicantInfo {
     this.createdAt,
     this.candidateId,
     required this.candidateEmail,
+    this.candidateName,
+    this.candidatePhone,
+    this.candidateAvatar,
+    this.appliedAt,
     required this.candidateSkills,
     required this.missingSkills,
     required this.isTopCandidate,
@@ -74,6 +82,10 @@ class ApplicantInfo {
       createdAt:        json['created_at'] as String?,
       candidateId:      json['candidate_id'] as int?,
       candidateEmail:   json['candidate_email'] as String? ?? 'Unknown',
+      candidateName:    json['candidate_name'] as String?,
+      candidatePhone:   json['candidate_phone'] as String?,
+      candidateAvatar:  json['candidate_avatar'] as String?,
+      appliedAt:        json['applied_at'] as String?,
       candidateSkills:  json['candidate_skills'] as String? ?? '',
       missingSkills: (json['missing_skills'] as List<dynamic>?)
               ?.map((s) => s.toString())

@@ -3,24 +3,40 @@ import 'package:shadcn_ui/shadcn_ui.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'theme/app_theme.dart';
 
 import 'services/auth_service.dart';
 import 'providers/explain_provider.dart';
 import 'providers/application_provider.dart';
 import 'providers/recruiter_provider.dart';
+import 'providers/resume_provider.dart';
+import 'providers/cv_provider.dart';
 import 'screens/auth_screen.dart';
+
 import 'screens/employer_dashboard.dart';
 import 'screens/candidate_dashboard.dart';
 import 'screens/home_screen.dart';
 import 'screens/explain_screen.dart';
 import 'screens/my_applications_screen.dart';
-import 'screens/applicants_screen.dart';
 import 'screens/job_list_screen.dart';
 import 'screens/job_detail_screen.dart';
+import 'screens/employer/create_job_screen.dart';
+import 'screens/employer/applicants_view.dart';
+import 'screens/candidate/cv_builder_screen.dart';
 import 'providers/job_provider.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart';
+
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  try {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+  } catch (e) {
+    debugPrint("Firebase init error: $e");
+  }
   final authService = AuthService();
   await authService.loadToken();
 
@@ -35,8 +51,11 @@ void main() async {
         // RecruiterProvider scoped at root (one job at a time is fine for demo)
         ChangeNotifierProvider(create: (_) => RecruiterProvider()),
         ChangeNotifierProvider(create: (_) => JobProvider()),
+        ChangeNotifierProvider(create: (_) => ResumeProvider()),
+        ChangeNotifierProvider(create: (_) => CvProvider()),
       ],
       child: const MyApp(),
+
     ),
   );
 }
@@ -132,11 +151,12 @@ class _MyAppState extends State<MyApp> {
           builder: (context, state) {
             final jobId    = int.tryParse(state.pathParameters['jobId'] ?? '') ?? 0;
             final jobTitle = state.extra as String? ?? 'Job';
-            return ChangeNotifierProvider(
-              create: (_) => RecruiterProvider(),
-              child: ApplicantsScreen(jobId: jobId, jobTitle: jobTitle),
-            );
+            return ApplicantsView(jobId: jobId, jobTitle: jobTitle);
           },
+        ),
+        GoRoute(
+          path: '/cv-builder',
+          builder: (context, state) => const CvBuilderScreen(),
         ),
       ],
     );
@@ -147,17 +167,9 @@ class _MyAppState extends State<MyApp> {
     return ShadApp.router(
       title: 'AI Job Match Platform',
       debugShowCheckedModeBanner: false,
-      darkTheme: ShadThemeData(
-        brightness: Brightness.dark,
-        colorScheme: const ShadSlateColorScheme.dark(
-          primary: Color(0xFF6C63FF),
-          background: Color(0xFF0F0F16),
-          foreground: Colors.white,
-          card: Color(0xFF1E1E2C),
-        ),
-        textTheme: ShadTextTheme.fromGoogleFont(GoogleFonts.outfit),
-      ),
-      themeMode: ThemeMode.dark,
+      theme: AppTheme.light,
+      darkTheme: AppTheme.dark,
+      themeMode: ThemeMode.light,
       routerConfig: _router,
     );
   }

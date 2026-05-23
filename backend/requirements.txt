@@ -20,4 +20,7 @@ opencv-python
 numpy
 requests
 httpx
+firebase-admin
+fastapi-mail
+google-auth
  

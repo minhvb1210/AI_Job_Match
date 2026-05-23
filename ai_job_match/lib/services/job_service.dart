@@ -49,6 +49,21 @@ class JobService {
     return [];
   }
 
+  /// Auth: Get only jobs owned by the current employer.
+  Future<List<dynamic>> getMyJobs() async {
+    final dio = await ApiService.authenticated();
+    final response = await dio.get('/jobs/my-jobs');
+    print("JOBS API (MY JOBS): ${response.data}");
+    final data = response.data;
+    if (data is Map && data['success'] == true) {
+      final innerData = data['data'];
+      if (innerData is Map && innerData.containsKey('items')) {
+        return innerData['items'] as List<dynamic>;
+      }
+    }
+    return [];
+  }
+
   /// Public: Get individual job by ID.
   Future<Map<String, dynamic>> getJobById(int jobId) async {
     final dio = ApiService.public();
@@ -130,6 +145,13 @@ class JobService {
       if (category != null && category != 'All') 'category': category,
       'limit': limit,
     });
-    return response.data as List<dynamic>;
+    return response.data['data'] as List<dynamic>;
+  }
+
+  /// Auth: Get AI job recommendations for candidate.
+  Future<List<dynamic>> getAiMatches() async {
+    final dio = await ApiService.authenticated();
+    final response = await dio.get('/ai/recommendations');
+    return response.data['data'] as List<dynamic>;
   }
 }

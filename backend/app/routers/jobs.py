@@ -113,6 +113,27 @@ def create_job(
     )
 
 
+@router.get("/my-jobs")
+def get_my_jobs(
+    page: int = 1,
+    limit: int = 20,
+    db: Session = Depends(get_db),
+    current_employer: User = Depends(get_current_employer),
+):
+    """Return only jobs owned by the currently authenticated employer."""
+    query  = db.query(Job).filter(Job.employer_id == current_employer.id)
+    total  = query.count()
+    offset = (page - 1) * limit
+    jobs   = query.order_by(Job.id.desc()).offset(offset).limit(limit).all()
+    print(f"DEBUG: GET /jobs/my-jobs — employer_id={current_employer.id}, found={total} jobs")
+    return paginated_response(
+        items=[JobResponse.model_validate(j).model_dump() for j in jobs],
+        total=total,
+        page=page,
+        limit=limit,
+    )
+
+
 @router.get("/search")
 def search_jobs(
     q: Optional[str] = None,
@@ -248,23 +269,6 @@ def update_job(
     )
 
 
-@router.delete("/{job_id}")
-def delete_job(
-    job_id: int,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_employer),
-):
-    job = db.query(Job).filter(Job.id == job_id).first()
-    if not job:
-        raise HTTPException(status_code=404, detail="Job not found")
-    if job.employer_id != current_user.id:
-        raise HTTPException(status_code=403, detail="Not authorized to delete this job")
-
-    # SavedJob cascade handles deletion; Applications are preserved
-    db.delete(job)
-    db.commit()
-    VectorizerCache.invalidate()   # job corpus changed
-    return success_response(message="Job deleted successfully")
 
 
 @router.get("/{job_id}")
@@ -402,3 +406,60 @@ async def get_external_jobs(category: Optional[str] = None, limit: int = 20):
             
     # Apply local limit
     return success_response(data=data[:limit])
+
+
+@router.delete("/{job_id}")
+def delete_job(
+    job_id: int,
+    db: Session = Depends(get_db),
+    current_employer: User = Depends(get_current_employer),
+):
+    # 1. Fetch Job
+    job = db.query(Job).filter(Job.id == job_id).first()
+    if not job:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Job with ID {job_id} not found."
+        )
+
+    # 2. Detailed authorization logging (console-level for immediate visibility)
+    owner_id = int(job.employer_id) if job.employer_id is not None else None
+    user_id  = int(current_employer.id) if current_employer.id is not None else None
+    print(f"DEBUG DELETE JOB: Authenticated user  → id={user_id} (type={type(current_employer.id).__name__}), email={current_employer.email}, role={current_employer.role!r}")
+    print(f"DEBUG DELETE JOB: Job {job_id} owner   → employer_id={owner_id} (type={type(job.employer_id).__name__})")
+    print(f"DEBUG DELETE JOB: Ownership match      → {owner_id} == {user_id} → {owner_id == user_id}")
+
+    # 3. Check ownership (cast both to int for safety against type mismatches)
+    if owner_id != user_id:
+        raise HTTPException(
+            status_code=403,
+            detail=f"Not authorized to delete this job. You (user {user_id}) are not the owner (employer {owner_id})."
+        )
+
+    try:
+        # 4. Explicitly delete related Application (and Interview via cascade) entries first to satisfy foreign key constraints
+        from app.models.models import Application, SavedJob
+        db.query(Application).filter(Application.job_id == job_id).delete(synchronize_session=False)
+
+        # 5. Explicitly delete related SavedJob entries
+        db.query(SavedJob).filter(SavedJob.job_id == job_id).delete(synchronize_session=False)
+
+        # 6. Delete the Job itself
+        db.delete(job)
+        db.commit()
+
+        # 7. Invalidate vectorizer cache since job corpus changed
+        VectorizerCache.invalidate()
+        print(f"DEBUG DELETE JOB: ✅ Job {job_id} deleted successfully by user {user_id}")
+
+        return success_response(
+            message="Job deleted successfully."
+        )
+    except Exception as e:
+        db.rollback()
+        print(f"DEBUG DELETE JOB: ❌ Failed to delete job {job_id}: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to delete job: {str(e)}"
+        )
+

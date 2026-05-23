@@ -24,6 +24,9 @@ class UserLogin(BaseModel):
 
 class UserResponse(UserBase):
     id: int
+    full_name: Optional[str] = None
+    avatar_url: Optional[str] = None
+    auth_provider: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -210,9 +213,9 @@ class FollowerResponse(BaseModel):
 # ─────────────────────────────────────────
 class InterviewCreate(BaseModel):
     application_id:  int
-    scheduled_at:    datetime
-    location:        Optional[str] = None
-    notes:           Optional[str] = None
+    scheduled_time:  str # ISO string
+    location:        str
+    note:            Optional[str] = None
 
 
 class InterviewResponse(BaseModel):
@@ -242,3 +245,59 @@ class DashboardStatsResponse(BaseModel):
 
 class CvSuggestionResponse(BaseModel):
     suggestions: List[str]
+
+
+# ─────────────────────────────────────────
+# Profile Schemas
+# ─────────────────────────────────────────
+class ProfileUpdateRequest(BaseModel):
+    full_name:     Optional[str] = None
+    phone_number:  Optional[str] = None
+    address:       Optional[str] = None
+    avatar_url:    Optional[str] = None
+    bio:           Optional[str] = None
+    date_of_birth: Optional[str] = None
+    website:       Optional[str] = None
+    industry:      Optional[str] = None
+
+
+class CandidateProfileFullResponse(BaseModel):
+    """Full profile for candidate users — returned by GET /profile/me."""
+    id:             int
+    email:          str
+    role:           str
+    full_name:      Optional[str] = None
+    phone_number:   Optional[str] = None
+    address:        Optional[str] = None
+    avatar_url:     Optional[str] = None
+    auth_provider:  Optional[str] = None
+    bio:            Optional[str] = None
+    date_of_birth:  Optional[str] = None
+    # Profile
+    skills_text:    Optional[str] = None
+    educations:     List[CandidateEducationResponse] = []
+    experiences:    List[CandidateExperienceResponse] = []
+    projects:       List[CandidateProjectResponse] = []
+    # Stats
+    saved_jobs_count:  int = 0
+    applied_jobs_count: int = 0
+
+
+class RecruiterProfileFullResponse(BaseModel):
+    """Full profile for recruiter users — returned by GET /profile/me."""
+    id:             int
+    email:          str
+    role:           str
+    full_name:      Optional[str] = None
+    phone_number:   Optional[str] = None
+    address:        Optional[str] = None
+    avatar_url:     Optional[str] = None
+    auth_provider:  Optional[str] = None
+    bio:            Optional[str] = None
+    website:        Optional[str] = None
+    industry:       Optional[str] = None
+    # Company
+    company:        Optional[CompanyResponse] = None
+    # Stats
+    jobs_posted_count:      int = 0
+    total_applicants_count: int = 0
