@@ -90,10 +90,9 @@ def match_cv_to_jobs(cv_text: str, jobs: list) -> list[dict]:
         cv_industry, confidence * 100, cleaned_cv,
     )
 
-    # ── Vectorize (cached) ────────────────────────────────────────────────────
-    vectorizer, job_matrix, id_to_idx = VectorizerCache.get(jobs)
-    cv_vec        = vectorizer.transform([processed_cv])
-    cosine_scores = cosine_similarity(cv_vec, job_matrix).flatten()
+    # ── Hybrid BM25+SBERT (cached) ───────────────────────────────────────────
+    hybrid_scorer, job_embeddings, id_to_idx = VectorizerCache.get(jobs)
+    cosine_scores = hybrid_scorer.score_cv(processed_cv)   # shape (n_jobs,), range [0,1]
 
     # ── Score each job ────────────────────────────────────────────────────────
     results = []
@@ -184,19 +183,22 @@ def explain_job_match(cv_text: str, job, jobs: list) -> dict:
         ai_logger.exception("explain_job_match: industry detection failed: %s", exc)
         cv_industry, confidence = "IT", 0.0
 
-    # Vectorize via cache
-    vectorizer, job_matrix, id_to_idx = VectorizerCache.get(jobs)
+    # Hybrid scoring via cache
+    hybrid_scorer, job_embeddings, id_to_idx = VectorizerCache.get(jobs)
     idx = id_to_idx.get(job.id)
 
     if idx is None:
-        # Job wasn't in the cached corpus (shouldn't happen) — fall back
-        ai_logger.warning("explain_job_match: job #%d not in cache, using fallback", job.id)
+        # Fallback: job không có trong cache — dùng SBERT trực tiếp
+        ai_logger.warning("explain_job_match: job #%d not in cache, using SBERT fallback", job.id)
+        from app.services.ai.vectorization import _get_sbert_model
+        sbert = _get_sbert_model()
         processed_job = preprocess_text(f"{job.title} {job.description} {job.skills}")
-        _, tmp_matrix = build_tfidf_matrix([processed_cv, processed_job])
-        cosine_raw    = float(cosine_similarity(tmp_matrix[0:1], tmp_matrix[1:]).flatten()[0])
+        cv_emb  = sbert.encode([processed_cv], normalize_embeddings=True)
+        job_emb = sbert.encode([processed_job], normalize_embeddings=True)
+        cosine_raw = float((cv_emb @ job_emb.T).flatten()[0])
     else:
-        cv_vec     = vectorizer.transform([processed_cv])
-        cosine_raw = float(cosine_similarity(cv_vec, job_matrix[idx]).flatten()[0])
+        all_scores = hybrid_scorer.score_cv(processed_cv)
+        cosine_raw = float(all_scores[idx])
 
     cosine_pct              = min((cosine_raw / _COSINE_SCALE) * 100, 100)
     job_category            = (job.category or "IT").strip()

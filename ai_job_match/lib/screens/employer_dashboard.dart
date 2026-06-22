@@ -20,6 +20,7 @@ import 'employer/dashboard_tab.dart';
 import 'employer/company_profile_tab.dart';
 import 'employer/ai_sourcing_dialog.dart';
 import 'employer/recruiter_profile_screen.dart';
+import 'shared/notifications_screen.dart';
 
 class EmployerDashboard extends StatefulWidget {
   const EmployerDashboard({super.key});
@@ -133,7 +134,7 @@ class _EmployerDashboardState extends State<EmployerDashboard> {
           const Spacer(),
           IconButton(
             icon: const Icon(LucideIcons.bell, color: AppColors.textSecondary, size: 20),
-            onPressed: () {},
+            onPressed: () => setState(() => _selectedTab = 'notifications'),
           ),
           const SizedBox(width: 16),
           GestureDetector(
@@ -156,6 +157,7 @@ class _EmployerDashboardState extends State<EmployerDashboard> {
       case 'my-profile': return 'My Profile';
       case 'profile': return 'Company Profile';
       case 'talent': return 'Talent Pool';
+      case 'notifications': return 'Notifications';
       default: return 'Recruiter Portal';
     }
   }
@@ -167,6 +169,7 @@ class _EmployerDashboardState extends State<EmployerDashboard> {
       case 'my-profile': return const RecruiterProfileScreen();
       case 'profile': return const CompanyProfileTab();
       case 'talent': return const Center(child: Text("Talent Pool coming soon..."));
+      case 'notifications': return const NotificationsScreen();
       default: return _buildJobsTab(theme);
     }
   }

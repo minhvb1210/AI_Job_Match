@@ -1,0 +1,42 @@
+# render.yaml — Render Blueprint for AI Job Match Platform
+# Deploys Backend (FastAPI) + Frontend (Flutter Web static)
+
+services:
+  # ── Backend API ─────────────────────────────────────────────
+  - type: web
+    name: aijobmatch-api
+    runtime: python
+    region: singapore  # Closest to Vietnam
+    plan: free
+    rootDir: backend
+    buildCommand: |
+      pip install -r requirements.txt &&
+      pip install bcrypt &&
+      python -c "import nltk; nltk.download('punkt_tab', quiet=True); nltk.download('stopwords', quiet=True)" &&
+      python seed_db.py &&
+      python seed_candidates.py &&
+      python seed_admin.py
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11.9"
+      - key: JWT_SECRET_KEY
+        value: b33ff8a0fa6164284b39b03cb06734ef9440ea3caee0da2c3328eb99a4fc1208
+
+  # ── Frontend (Flutter Web Static Site) ──────────────────────
+  - type: web
+    name: aijobmatch-web
+    runtime: static
+    region: singapore
+    plan: free
+    rootDir: ai_job_match
+    buildCommand: echo "Pre-built Flutter Web — skip build"
+    staticPublishPath: build/web
+    headers:
+      - path: /*
+        name: Cache-Control
+        value: no-cache
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html

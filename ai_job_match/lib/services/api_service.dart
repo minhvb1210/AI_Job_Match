@@ -4,15 +4,24 @@ import 'package:flutter/foundation.dart';
 import 'dart:io';
 
 class ApiService {
+  // ── Set this to your Render backend URL after deploying ──
+  // Example: 'https://aijobmatch-api.onrender.com'
+  // Leave empty string to use localhost (local development)
+  static const String _productionApiUrl = String.fromEnvironment(
+    'API_BASE_URL',
+    defaultValue: '',
+  );
+
   static String get baseUrl {
+    // If production URL is set (via --dart-define), use it
+    if (_productionApiUrl.isNotEmpty) {
+      return _productionApiUrl;
+    }
     if (kIsWeb) {
-      // For Flutter Web, use 127.0.0.1 to avoid some localhost issues in Chrome
       return 'http://127.0.0.1:8000';
     } else if (Platform.isAndroid) {
-      // Android emulator address for localhost
       return 'http://10.0.2.2:8000';
     } else {
-      // iOS Simulator or other platforms
       return 'http://localhost:8000';
     }
   }

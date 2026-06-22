@@ -40,18 +40,28 @@ def apply_for_job(
         status=ApplicationStatus.pending,
     )
     db.add(new_app)
+
+    # 3. Create in-app notification for recruiter
+    recruiter = db.query(User).filter(User.id == job.employer_id).first()
+    candidate_name = current_user.full_name or current_user.email
+    score_text = f" (Match: {application.match_score:.0f}%)" if application.match_score else ""
+    notification = Notification(
+        user_id=job.employer_id,
+        message=f"📩 New application from {candidate_name} for '{job.title}'{score_text}.",
+    )
+    db.add(notification)
+
     db.commit()
     db.refresh(new_app)
 
-    # 3. Notify recruiter via Email
+    # 4. Notify recruiter via Email (async, non-blocking)
     try:
         from app.services.email_service import EmailService
         import asyncio
-        recruiter = db.query(User).filter(User.id == job.employer_id).first()
         if recruiter:
             asyncio.create_task(EmailService.send_application_notification(
                 recruiter_email=recruiter.email,
-                candidate_name=current_user.full_name or current_user.email,
+                candidate_name=candidate_name,
                 candidate_email=current_user.email,
                 job_title=job.title,
                 match_score=application.match_score
@@ -113,8 +123,30 @@ def get_applications_for_job(
     if job.employer_id != current_user.id:
         raise HTTPException(status_code=403, detail="Not authorized to view this job's applications")
 
-    # Fetch all, sort by AI match_score descending so top candidates appear first
+    # Fetch all applications for this job
     apps = db.query(Application).filter(Application.job_id == job_id).all()
+
+    # Recalculate AI scores server-side for any applicant with score=0 or None
+    all_jobs = db.query(Job).all()
+    needs_commit = False
+    for app in apps:
+        if (app.match_score or 0) < 1:
+            profile = db.query(CandidateProfile).filter(
+                CandidateProfile.user_id == app.candidate_id
+            ).first()
+            cv_text = (profile.skills_text or "") if profile else ""
+            if cv_text.strip():
+                try:
+                    from app.services.ai.scoring import explain_job_match
+                    breakdown = explain_job_match(cv_text=cv_text, job=job, jobs=all_jobs)
+                    app.match_score = breakdown["final_score"]
+                    needs_commit = True
+                except Exception:
+                    pass
+    if needs_commit:
+        db.commit()
+
+    # Sort by AI match_score descending so top candidates appear first
     apps.sort(key=lambda a: (a.match_score or 0), reverse=True)
 
     total  = len(apps)

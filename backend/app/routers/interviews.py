@@ -5,7 +5,7 @@ from pydantic import BaseModel
 
 from app.core.database import get_db
 from app.core.responses import success_response
-from app.models.models import Application, User, Job, Interview, ApplicationStatus, InterviewStatus
+from app.models.models import Application, User, Job, Interview, Notification, ApplicationStatus, InterviewStatus
 from app.core.auth import get_current_employer
 from app.services.email_service import EmailService
 import asyncio
@@ -46,11 +46,20 @@ async def schedule_interview(
         status=InterviewStatus.scheduled
     )
     db.add(interview)
+
+    # 4. Create in-app notification for candidate
+    candidate = db.query(User).filter(User.id == app.candidate_id).first()
+    recruiter_name = current_user.full_name or current_user.email
+    notification = Notification(
+        user_id=app.candidate_id,
+        message=f"📅 Interview scheduled for '{job.title}' on {dt.strftime('%b %d, %Y at %H:%M')}. Location: {data.location or 'TBD'}. Scheduled by {recruiter_name}.",
+    )
+    db.add(notification)
+
     db.commit()
     db.refresh(interview)
 
-    # 4. Send Email to Candidate
-    candidate = db.query(User).filter(User.id == app.candidate_id).first()
+    # 5. Send Email to Candidate (async, non-blocking)
     if candidate:
         asyncio.create_task(EmailService.send_interview_invitation(
             candidate_email=candidate.email,
@@ -59,10 +68,11 @@ async def schedule_interview(
             interview_date=dt.strftime("%Y-%m-%d"),
             interview_time=dt.strftime("%H:%M"),
             location=data.location,
-            recruiter_name=current_user.full_name or "Recruiter"
+            recruiter_name=recruiter_name
         ))
 
     return success_response(
         data={"interview_id": interview.id, "status": "scheduled"},
         message="Interview scheduled and invitation email sent."
     )
+

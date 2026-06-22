@@ -11,6 +11,7 @@ import '../../models/job_match.dart';
 import '../../providers/cv_provider.dart';
 import '../../theme/app_colors.dart';
 import '../../widgets/modern_job_card.dart';
+import '../../services/application_service.dart';
 import 'package:go_router/go_router.dart';
 
 class AiMatchingTab extends StatefulWidget {
@@ -204,10 +205,30 @@ class _AiMatchingTabState extends State<AiMatchingTab> {
           job: match.job.toJson(),
           matchScore: match.score,
           onTap: () => context.push('/jobs/${match.job.id}'),
-          onApply: () {},
+          onApply: () => _applyFromMatch(match.job.id, match.score),
         ).animate().fadeIn().slideY(begin: 0.1)).toList(),
       ],
     ).animate().fadeIn(duration: 600.ms);
+  }
+
+  Future<void> _applyFromMatch(int jobId, double score) async {
+    try {
+      final appService = ApplicationService();
+      await appService.applyForJob(jobId: jobId, matchScore: score);
+      if (mounted) {
+        ShadToaster.of(context).show(const ShadToast(
+          title: Text("Application Sent!"),
+          description: Text("You have successfully applied for this role."),
+        ));
+      }
+    } catch (e) {
+      if (mounted) {
+        ShadToaster.of(context).show(ShadToast.destructive(
+          title: const Text("Error"),
+          description: Text(e.toString()),
+        ));
+      }
+    }
   }
 
 

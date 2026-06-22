@@ -128,59 +128,48 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
           if (!isMobile)
             Expanded(
               flex: 5,
-              child: Stack(
-                children: [
-                  Container(
-                    decoration: const BoxDecoration(
-                      gradient: AppColors.premiumGradient,
-                    ),
+              child: Container(
+                    color: AppColors.primary,
                     child: Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Icon(LucideIcons.sparkles, size: 80, color: Colors.white),
-                          const SizedBox(height: 32),
-                          const Text(
-                            'AI Job Match Platform',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 42,
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: -1,
+                      child: Padding(
+                        padding: const EdgeInsets.all(48.0),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              child: const Icon(LucideIcons.briefcase, size: 48, color: Colors.white),
                             ),
-                          ),
-                          const SizedBox(height: 16),
-                          Text(
-                            'Connecting top talent with elite companies through AI.',
-                            style: TextStyle(
-                              color: Colors.white.withOpacity(0.8),
-                              fontSize: 18,
+                            const SizedBox(height: 48),
+                            const Text(
+                              'Discover your\nnext career move.',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 56,
+                                fontWeight: FontWeight.bold,
+                                height: 1.1,
+                                letterSpacing: -2,
+                              ),
                             ),
-                          ),
-                        ],
+                            const SizedBox(height: 24),
+                            Text(
+                              'Join thousands of professionals and top tier companies connecting through our intelligent platform.',
+                              style: TextStyle(
+                                color: Colors.white.withOpacity(0.8),
+                                fontSize: 18,
+                                height: 1.5,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),
-                  Positioned(
-                    top: 40,
-                    left: 40,
-                    child: Row(
-                      children: [
-                        const Icon(LucideIcons.briefcase, color: Colors.white, size: 28),
-                        const SizedBox(width: 12),
-                        Text(
-                          'Antigravity AI',
-                          style: GoogleFonts.outfit(
-                            color: Colors.white,
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
             ),
           Expanded(
             flex: 4,

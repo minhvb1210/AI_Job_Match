@@ -25,6 +25,7 @@ import 'candidate/companies_screen.dart';
 import 'candidate/ai_matching_tab.dart';
 import 'candidate/candidate_profile_screen.dart';
 import 'my_applications_screen.dart';
+import 'shared/notifications_screen.dart';
 
 class CandidateDashboard extends StatefulWidget {
   const CandidateDashboard({super.key});
@@ -222,6 +223,7 @@ class _CandidateDashboardState extends State<CandidateDashboard> {
       case 'saved': return 'My Saved Jobs';
       case 'companies': return 'Top Companies';
       case 'applications': return 'My Applications';
+      case 'notifications': return 'Notifications';
       default: return 'Candidate Portal';
     }
   }
@@ -235,6 +237,7 @@ class _CandidateDashboardState extends State<CandidateDashboard> {
       case 'saved': return const SavedJobsScreen();
       case 'companies': return const CompaniesScreen();
       case 'applications': return const MyApplicationsScreen();
+      case 'notifications': return const NotificationsScreen();
       default: return _buildDiscoverTab(theme);
     }
   }
@@ -415,10 +418,7 @@ class _CandidateDashboardState extends State<CandidateDashboard> {
   }
 
   void _showNotifications() {
-    // showDialog(
-    //   context: context,
-    //   builder: (context) => const NotificationDialog(),
-    // );
+    setState(() => _selectedTab = 'notifications');
   }
 
   void _showImproveCv() {

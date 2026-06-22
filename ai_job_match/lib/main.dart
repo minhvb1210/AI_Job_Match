@@ -23,6 +23,7 @@ import 'screens/job_detail_screen.dart';
 import 'screens/employer/create_job_screen.dart';
 import 'screens/employer/applicants_view.dart';
 import 'screens/candidate/cv_builder_screen.dart';
+import 'screens/admin/admin_dashboard.dart';
 import 'providers/job_provider.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
@@ -78,7 +79,9 @@ class _MyAppState extends State<MyApp> {
     _router = GoRouter(
       refreshListenable: authService,
       initialLocation: authService.isAuthenticated
-          ? (authService.role == 'recruiter' || authService.role == 'employer' ? '/recruiter' : '/candidate')
+          ? (authService.role == 'admin'
+              ? '/admin'
+              : (authService.role == 'recruiter' || authService.role == 'employer' ? '/recruiter' : '/candidate'))
           : '/login',
       redirect: (context, state) {
         final isLoggedIn = authService.isAuthenticated;
@@ -90,6 +93,7 @@ class _MyAppState extends State<MyApp> {
 
         if (!isLoggedIn && !isAuthRoute && !isPublicRoute) return '/login';
         if (isLoggedIn && isAuthRoute) {
+          if (authService.role == 'admin') return '/admin';
           return (authService.role == 'recruiter' || authService.role == 'employer') ? '/recruiter' : '/candidate';
         }
         return null;
@@ -110,6 +114,10 @@ class _MyAppState extends State<MyApp> {
         GoRoute(
           path: '/candidate',
           builder: (context, state) => const CandidateDashboard(),
+        ),
+        GoRoute(
+          path: '/admin',
+          builder: (context, state) => const AdminDashboard(),
         ),
         GoRoute(
           path: '/create-job',

@@ -82,6 +82,12 @@ class CandidateSidebar extends StatelessWidget {
             isSelected: selectedTab == 'applications',
             onTap: () => onTabChanged('applications'),
           ),
+          _SidebarItem(
+            icon: LucideIcons.bell,
+            label: 'Notifications',
+            isSelected: selectedTab == 'notifications',
+            onTap: () => onTabChanged('notifications'),
+          ),
           const Spacer(),
           const Divider(height: 1, color: Color(0xFFE2E8F0)),
           const SizedBox(height: 24),

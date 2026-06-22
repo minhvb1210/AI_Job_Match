@@ -1,7 +1,10 @@
+import 'dart:convert';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
+import 'package:file_picker/file_picker.dart';
 import '../../../providers/resume_provider.dart';
 import '../../../models/resume_data.dart';
 import '../../../theme/app_colors.dart';
@@ -160,10 +163,9 @@ class _PersonalInformationForm extends StatelessWidget {
           onChanged: (v) => provider.updatePersonalInfo(jobTitle: v),
         )),
         const SizedBox(height: 16),
-        _buildField("Avatar URL", ShadInput(
-          initialValue: data.avatarUrl,
+        _buildField("Avatar", _AvatarPicker(
+          currentUrl: data.avatarUrl,
           onChanged: (v) => provider.updatePersonalInfo(avatarUrl: v),
-          placeholder: const Text("https://example.com/avatar.jpg"),
         )),
         const SizedBox(height: 16),
         Row(
@@ -417,6 +419,84 @@ class _LanguagesForm extends StatelessWidget {
       initialValue: provider.data.languages.join(", "),
       placeholder: const Text("e.g. English (Fluent), Vietnamese (Native)"),
       onChanged: (v) => provider.updateLanguages(v.split(",").map((e) => e.trim()).where((e) => e.isNotEmpty).toList()),
+    );
+  }
+}
+
+class _AvatarPicker extends StatelessWidget {
+  final String avatarUrl;
+  final ValueChanged<String> onChanged;
+
+  const _AvatarPicker({required String currentUrl, required this.onChanged})
+      : avatarUrl = currentUrl;
+
+  Future<void> _pickImage(BuildContext context) async {
+    final result = await FilePicker.pickFiles(
+      type: FileType.image,
+      withData: true,
+    );
+    if (result != null && result.files.first.bytes != null) {
+      final bytes = result.files.first.bytes!;
+      final ext = result.files.first.extension?.toLowerCase() ?? 'png';
+      final mime = ext == 'jpg' || ext == 'jpeg' ? 'image/jpeg' : 'image/$ext';
+      final base64Str = base64Encode(bytes);
+      final dataUri = 'data:$mime;base64,$base64Str';
+      onChanged(dataUri);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final hasImage = avatarUrl.isNotEmpty;
+    final isBase64 = avatarUrl.startsWith('data:image');
+
+    return Row(
+      children: [
+        // Preview
+        Container(
+          width: 72,
+          height: 72,
+          decoration: BoxDecoration(
+            color: const Color(0xFFF1F5F9),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: const Color(0xFFE2E8F0)),
+            image: hasImage
+                ? DecorationImage(
+                    image: isBase64
+                        ? MemoryImage(base64Decode(avatarUrl.split(',').last))
+                        : NetworkImage(avatarUrl) as ImageProvider,
+                    fit: BoxFit.cover,
+                  )
+                : null,
+          ),
+          child: !hasImage
+              ? const Icon(LucideIcons.user, color: AppColors.textPlaceholder, size: 28)
+              : null,
+        ),
+        const SizedBox(width: 16),
+        // Buttons
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            ShadButton.outline(
+              onPressed: () => _pickImage(context),
+              size: ShadButtonSize.sm,
+              leading: const Icon(LucideIcons.upload, size: 14),
+              child: Text(hasImage ? 'Change Photo' : 'Upload Photo'),
+            ),
+            if (hasImage) ...[
+              const SizedBox(height: 6),
+              GestureDetector(
+                onTap: () => onChanged(''),
+                child: const Text(
+                  'Remove',
+                  style: TextStyle(color: AppColors.error, fontSize: 12, fontWeight: FontWeight.w600),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ],
     );
   }
 }

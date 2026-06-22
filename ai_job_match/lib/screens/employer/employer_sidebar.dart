@@ -70,6 +70,12 @@ class EmployerSidebar extends StatelessWidget {
             isSelected: selectedTab == 'talent',
             onTap: () => onTabChanged('talent'),
           ),
+          _SidebarItem(
+            icon: LucideIcons.bell,
+            label: 'Notifications',
+            isSelected: selectedTab == 'notifications',
+            onTap: () => onTabChanged('notifications'),
+          ),
           const Spacer(),
           const Divider(height: 1, color: Color(0xFFE2E8F0)),
           const SizedBox(height: 24),
