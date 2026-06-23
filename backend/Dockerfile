@@ -9,9 +9,8 @@ RUN apt-get update && apt-get install -y \
     libglib2.0-0 \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements và cài đặt (Tải bản PyTorch CPU siêu nhẹ để tránh tràn RAM)
+# Copy requirements và cài đặt (Đã bỏ SBERT/PyTorch để tránh tràn RAM)
 COPY requirements.txt .
-RUN pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
 RUN pip install --no-cache-dir -r requirements.txt
 RUN pip install --no-cache-dir bcrypt
 

@@ -19,29 +19,24 @@ import numpy as np
 from dataclasses import dataclass
 
 from rank_bm25 import BM25Okapi
-from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
 import scipy.sparse
 
 logger = logging.getLogger("ai_scoring")
 
-# SBERT model tiếng Việt — tải 1 lần duy nhất khi module được import
-_SBERT_MODEL_NAME = "keepitreal/vietnamese-sbert"
-_sbert_model: SentenceTransformer | None = None
-_sbert_lock = threading.Lock()
+# ─────────────────────────────────────────────────────────────────────────────
+# Bỏ SBERT để chạy mượt trên Render gói Free (tránh lỗi hết RAM 512MB)
+# Chỉ sử dụng thuật toán BM25 siêu nhẹ.
+# ─────────────────────────────────────────────────────────────────────────────
+class _DummySBERT:
+    def encode(self, texts: list[str], **kwargs) -> np.ndarray:
+        # Dummy embedding shape (n, 384)
+        return np.zeros((len(texts), 384), dtype=np.float32)
 
+_sbert_model = _DummySBERT()
 
-def _get_sbert_model() -> SentenceTransformer:
-    """Lazy load SBERT model — chỉ tải lần đầu tiên."""
-    global _sbert_model
-    if _sbert_model is None:
-        with _sbert_lock:
-            if _sbert_model is None:
-                logger.info("Loading SBERT model: %s", _SBERT_MODEL_NAME)
-                _sbert_model = SentenceTransformer(_SBERT_MODEL_NAME)
-                logger.info("SBERT model loaded successfully")
+def _get_sbert_model() -> _DummySBERT:
     return _sbert_model
-
 
 def _tokenize_vi(text: str) -> list[str]:
     """Tokenize đơn giản cho BM25 — split theo khoảng trắng sau khi lowercase."""
@@ -169,7 +164,7 @@ class _HybridScorer:
     Được dùng bởi scoring.py thay cho TfidfVectorizer.
     """
 
-    def __init__(self, bm25_index: BM25Okapi, job_embeddings: np.ndarray, alpha: float = 0.4):
+    def __init__(self, bm25_index: BM25Okapi, job_embeddings: np.ndarray, alpha: float = 1.0):
         self.bm25_index     = bm25_index
         self.job_embeddings = job_embeddings
         self.alpha          = alpha  # trọng số BM25
