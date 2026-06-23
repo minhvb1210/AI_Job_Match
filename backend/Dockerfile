@@ -26,5 +26,5 @@ RUN python seed_db.py && python seed_candidates.py && python seed_admin.py
 # Expose port (Render sẽ tự map $PORT)
 EXPOSE 8000
 
-# Command chạy server
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Command chạy server (sử dụng $PORT do Render cấp phát, mặc định 8000)
+CMD uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}
