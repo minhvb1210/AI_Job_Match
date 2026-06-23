@@ -20,8 +20,8 @@ RUN python -c "import nltk; nltk.download('punkt_tab', quiet=True); nltk.downloa
 # Copy toàn bộ code backend
 COPY . .
 
-# Chạy seed data để tạo database SQLite mẫu
-RUN python seed_db.py && python seed_candidates.py && python seed_admin.py
+# Bỏ qua bước seed data vì ai_jobmatch.db đã được push lên GitHub
+# RUN python seed_db.py && python seed_candidates.py && python seed_admin.py
 
 # Expose port (Render sẽ tự map $PORT)
 EXPOSE 8000
