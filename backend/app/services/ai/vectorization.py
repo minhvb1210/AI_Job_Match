@@ -1,4 +1,4 @@
-from sklearn.feature_extraction.text import TfidfVectorizer
+from rank_bm25 import BM25Okapi
 from sklearn.metrics.pairwise import cosine_similarity
 from sentence_transformers import SentenceTransformer
 import scipy.sparse
@@ -19,22 +19,26 @@ def _get_sbert_model():
         _sbert_model = SentenceTransformer("keepitreal/vietnamese-sbert")
     return _sbert_model
 
+def _tokenize_vi(text: str) -> list[str]:
+    """Tokenize đơn giản cho BM25 — split theo khoảng trắng sau khi lowercase."""
+    return text.lower().split()
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Cache dataclass
 # ─────────────────────────────────────────────────────────────────────────────
 @dataclass
 class _CacheEntry:
-    vectorizer:     TfidfVectorizer
-    job_matrix:     scipy.sparse.csr_matrix
+    bm25_index:     BM25Okapi
     job_embeddings: np.ndarray
     job_id_to_idx:  dict
     corpus_hash:    str
     job_count:      int
-    bm25_index:     object = None
+    vectorizer:     object = None
+    job_matrix:     object = None
 
 class VectorizerCache:
     """
-    Thread-safe singleton cache cho Hybrid TF-IDF + SBERT engine.
+    Thread-safe singleton cache cho Hybrid BM25 + SBERT engine.
     """
     _lock:  threading.Lock = threading.Lock()
     _entry: "_CacheEntry | None" = None
@@ -48,25 +52,23 @@ class VectorizerCache:
                     "VectorizerCache HIT — %d jobs, hash=%s",
                     cls._entry.job_count, current_hash[:8],
                 )
-                scorer = _HybridScorer(cls._entry.vectorizer, cls._entry.job_matrix, cls._entry.job_embeddings)
-                return scorer, cls._entry.job_matrix, cls._entry.job_id_to_idx
+                scorer = _HybridScorer(cls._entry.bm25_index, cls._entry.job_embeddings)
+                return scorer, cls._entry.job_embeddings, cls._entry.job_id_to_idx
 
             logger.info(
                 "VectorizerCache MISS — rebuilding on %d jobs (hash=%s)",
                 len(jobs), current_hash[:8],
             )
-            vectorizer, job_matrix, job_embeddings, id_to_idx = cls._build(jobs)
+            bm25_index, job_embeddings, id_to_idx = cls._build(jobs)
             cls._entry = _CacheEntry(
-                vectorizer    = vectorizer,
-                job_matrix    = job_matrix,
+                bm25_index    = bm25_index,
                 job_embeddings= job_embeddings,
                 job_id_to_idx = id_to_idx,
                 corpus_hash   = current_hash,
                 job_count     = len(jobs),
             )
-            scorer = _HybridScorer(vectorizer, job_matrix, job_embeddings)
-            # return job_matrix to keep backward compatibility with id_to_idx
-            return scorer, job_matrix, id_to_idx
+            scorer = _HybridScorer(bm25_index, job_embeddings)
+            return scorer, job_embeddings, id_to_idx
 
     @classmethod
     def invalidate(cls) -> None:
@@ -91,12 +93,13 @@ class VectorizerCache:
             for j in sorted_jobs
         ]
 
-        vectorizer = TfidfVectorizer()
         if not job_texts:
-            job_matrix = scipy.sparse.csr_matrix((0, 0))
+            bm25_index = BM25Okapi([[]])
             job_embeddings = np.zeros((0, 384), dtype=np.float32)
         else:
-            job_matrix = vectorizer.fit_transform(job_texts)
+            tokenized_jobs = [_tokenize_vi(text) for text in job_texts]
+            bm25_index     = BM25Okapi(tokenized_jobs)
+            
             sbert = _get_sbert_model()
             job_embeddings = sbert.encode(
                 job_texts,
@@ -105,29 +108,35 @@ class VectorizerCache:
                 normalize_embeddings=True,
             )
             
-        logger.info("Hybrid TF-IDF + SBERT matrix built for %d jobs", len(sorted_jobs))
+        logger.info("Hybrid BM25 + SBERT matrix built for %d jobs", len(sorted_jobs))
 
         id_to_idx = {j.id: idx for idx, j in enumerate(sorted_jobs)}
-        return vectorizer, job_matrix, job_embeddings, id_to_idx
+        return bm25_index, job_embeddings, id_to_idx
 
 
 class _HybridScorer:
     """
-    Kết hợp TF-IDF (keyword) + SBERT (semantic) để tính hybrid score.
+    Kết hợp BM25 (keyword) + SBERT (semantic) để tính hybrid score.
     """
-    def __init__(self, vectorizer: TfidfVectorizer, job_matrix: scipy.sparse.csr_matrix, job_embeddings: np.ndarray, alpha: float = 0.5):
-        self.vectorizer = vectorizer
-        self.job_matrix = job_matrix
+    def __init__(self, bm25_index: BM25Okapi, job_embeddings: np.ndarray, alpha: float = 0.5):
+        self.bm25_index = bm25_index
         self.job_embeddings = job_embeddings
         self.alpha = alpha
 
     def score_cv(self, processed_cv_text: str) -> np.ndarray:
-        if self.job_matrix.shape[0] == 0:
+        if self.job_embeddings.shape[0] == 0:
             return np.array([])
             
-        cv_tfidf = self.vectorizer.transform([processed_cv_text])
-        tfidf_scores = cosine_similarity(cv_tfidf, self.job_matrix).flatten()
+        # 1. BM25 Score
+        tokens      = _tokenize_vi(processed_cv_text)
+        bm25_scores = np.array(self.bm25_index.get_scores(tokens), dtype=float)
         
+        # Soft normalization for BM25 to prevent tiny scores from becoming 1.0
+        # A good match usually scores above 10.0 in BM25
+        max_bm25 = max(bm25_scores.max(), 10.0)
+        bm25_norm = bm25_scores / max_bm25 if max_bm25 > 0 else np.zeros_like(bm25_scores)
+        
+        # 2. SBERT Score
         sbert = _get_sbert_model()
         cv_embedding = sbert.encode(
             [processed_cv_text],
@@ -135,8 +144,10 @@ class _HybridScorer:
             normalize_embeddings=True,
         )
         sbert_scores = (self.job_embeddings @ cv_embedding.T).flatten()
+        sbert_norm = np.clip(sbert_scores, 0, 1) # Ensure within [0, 1]
         
-        hybrid_scores = self.alpha * tfidf_scores + (1 - self.alpha) * sbert_scores
+        # 3. Hybrid Score
+        hybrid_scores = self.alpha * bm25_norm + (1 - self.alpha) * sbert_norm
         return hybrid_scores
 
     def transform(self, texts: list[str]) -> np.ndarray:
