@@ -1,32 +1,30 @@
-# Use an official Python runtime as a parent image
 FROM python:3.11-slim
 
-# Set the working directory in the container
 WORKDIR /app
 
-# Install system dependencies
+# Cài đặt các thư viện hệ thống cần thiết cho AI và database
 RUN apt-get update && apt-get install -y \
     tesseract-ocr \
-    libgl1 \
+    libgl1-mesa-glx \
     libglib2.0-0 \
-    gcc \
-    python3-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy the requirements file into the container
+# Copy requirements và cài đặt
 COPY requirements.txt .
-
-# Install any needed packages specified in requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir bcrypt
 
-# Copy the rest of the application code into the container
+# Tải model NLTK
+RUN python -c "import nltk; nltk.download('punkt_tab', quiet=True); nltk.download('stopwords', quiet=True)"
+
+# Copy toàn bộ code backend
 COPY . .
 
-# Expose the port the app runs on
+# Chạy seed data để tạo database SQLite mẫu
+RUN python seed_db.py && python seed_candidates.py && python seed_admin.py
+
+# Expose port (Render sẽ tự map $PORT)
 EXPOSE 8000
 
-# Metadata
-LABEL maintainer="Antigravity Senior QA"
-LABEL description="AI Recruitment Platform Backend"
-
-# Entrypoint / Command is handled in docker-compose.yml for flexibility
+# Command chạy server
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
