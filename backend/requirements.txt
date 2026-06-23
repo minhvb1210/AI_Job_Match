@@ -16,7 +16,7 @@ pillow
 scikit-learn
 nltk
 unidecode
-opencv-python
+opencv-python-headless
 numpy
 requests
 httpx
