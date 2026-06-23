@@ -1,30 +1,23 @@
-"""
-app/services/ai/vectorization.py
-
-Hybrid BM25 + SBERT search engine — thay thế TF-IDF.
-
-Thiết kế:
-  - HybridSearchEngine: kết hợp BM25 (keyword matching) + SBERT (semantic similarity)
-  - VectorizerCache: giữ nguyên interface cũ để scoring.py không cần thay đổi nhiều
-  - Cache invalidation: hash-based, thread-safe (giữ nguyên logic cũ)
-
-Công thức:
-  hybrid_score = alpha * normalize(BM25) + (1 - alpha) * normalize(SBERT)
-  alpha = 0.4 (BM25 trọng số thấp hơn vì dữ liệu tiếng Việt)
-"""
-import hashlib
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
+from sentence_transformers import SentenceTransformer
+import scipy.sparse
+import numpy as np
 import logging
 import threading
-import numpy as np
 from dataclasses import dataclass
-
-from rank_bm25 import BM25Okapi
-from sklearn.metrics.pairwise import cosine_similarity
-import scipy.sparse
+import hashlib
 
 logger = logging.getLogger("ai_scoring")
 
-from sklearn.feature_extraction.text import TfidfVectorizer
+_sbert_model = None
+
+def _get_sbert_model():
+    global _sbert_model
+    if _sbert_model is None:
+        logger.info("Loading SBERT model (keepitreal/vietnamese-sbert)...")
+        _sbert_model = SentenceTransformer("keepitreal/vietnamese-sbert")
+    return _sbert_model
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Cache dataclass
@@ -33,15 +26,15 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 class _CacheEntry:
     vectorizer:     TfidfVectorizer
     job_matrix:     scipy.sparse.csr_matrix
+    job_embeddings: np.ndarray
     job_id_to_idx:  dict
     corpus_hash:    str
     job_count:      int
     bm25_index:     object = None
-    job_embeddings: object = None
 
 class VectorizerCache:
     """
-    Thread-safe singleton cache cho TF-IDF vectorizer.
+    Thread-safe singleton cache cho Hybrid TF-IDF + SBERT engine.
     """
     _lock:  threading.Lock = threading.Lock()
     _entry: "_CacheEntry | None" = None
@@ -55,22 +48,24 @@ class VectorizerCache:
                     "VectorizerCache HIT — %d jobs, hash=%s",
                     cls._entry.job_count, current_hash[:8],
                 )
-                scorer = _HybridScorer(cls._entry.vectorizer, cls._entry.job_matrix)
+                scorer = _HybridScorer(cls._entry.vectorizer, cls._entry.job_matrix, cls._entry.job_embeddings)
                 return scorer, cls._entry.job_matrix, cls._entry.job_id_to_idx
 
             logger.info(
                 "VectorizerCache MISS — rebuilding on %d jobs (hash=%s)",
                 len(jobs), current_hash[:8],
             )
-            vectorizer, job_matrix, id_to_idx = cls._build(jobs)
+            vectorizer, job_matrix, job_embeddings, id_to_idx = cls._build(jobs)
             cls._entry = _CacheEntry(
                 vectorizer    = vectorizer,
                 job_matrix    = job_matrix,
+                job_embeddings= job_embeddings,
                 job_id_to_idx = id_to_idx,
                 corpus_hash   = current_hash,
                 job_count     = len(jobs),
             )
-            scorer = _HybridScorer(vectorizer, job_matrix)
+            scorer = _HybridScorer(vectorizer, job_matrix, job_embeddings)
+            # return job_matrix to keep backward compatibility with id_to_idx
             return scorer, job_matrix, id_to_idx
 
     @classmethod
@@ -99,42 +94,59 @@ class VectorizerCache:
         vectorizer = TfidfVectorizer()
         if not job_texts:
             job_matrix = scipy.sparse.csr_matrix((0, 0))
+            job_embeddings = np.zeros((0, 384), dtype=np.float32)
         else:
             job_matrix = vectorizer.fit_transform(job_texts)
+            sbert = _get_sbert_model()
+            job_embeddings = sbert.encode(
+                job_texts,
+                show_progress_bar=False,
+                convert_to_numpy=True,
+                normalize_embeddings=True,
+            )
             
-        logger.info("TF-IDF matrix built for %d jobs", len(sorted_jobs))
+        logger.info("Hybrid TF-IDF + SBERT matrix built for %d jobs", len(sorted_jobs))
 
         id_to_idx = {j.id: idx for idx, j in enumerate(sorted_jobs)}
-        return vectorizer, job_matrix, id_to_idx
+        return vectorizer, job_matrix, job_embeddings, id_to_idx
 
 
 class _HybridScorer:
     """
-    Giữ tên class cũ để tương thích. Thực chất chỉ dùng TF-IDF cosine similarity.
+    Kết hợp TF-IDF (keyword) + SBERT (semantic) để tính hybrid score.
     """
-    def __init__(self, vectorizer: TfidfVectorizer, job_matrix: scipy.sparse.csr_matrix):
+    def __init__(self, vectorizer: TfidfVectorizer, job_matrix: scipy.sparse.csr_matrix, job_embeddings: np.ndarray, alpha: float = 0.5):
         self.vectorizer = vectorizer
         self.job_matrix = job_matrix
+        self.job_embeddings = job_embeddings
+        self.alpha = alpha
 
     def score_cv(self, processed_cv_text: str) -> np.ndarray:
         if self.job_matrix.shape[0] == 0:
             return np.array([])
+            
         cv_tfidf = self.vectorizer.transform([processed_cv_text])
-        scores = cosine_similarity(cv_tfidf, self.job_matrix).flatten()
-        return scores
+        tfidf_scores = cosine_similarity(cv_tfidf, self.job_matrix).flatten()
+        
+        sbert = _get_sbert_model()
+        cv_embedding = sbert.encode(
+            [processed_cv_text],
+            convert_to_numpy=True,
+            normalize_embeddings=True,
+        )
+        sbert_scores = (self.job_embeddings @ cv_embedding.T).flatten()
+        
+        hybrid_scores = self.alpha * tfidf_scores + (1 - self.alpha) * sbert_scores
+        return hybrid_scores
 
     def transform(self, texts: list[str]) -> np.ndarray:
-        return self.vectorizer.transform(texts).toarray()
-
+        sbert = _get_sbert_model()
+        return sbert.encode(texts, convert_to_numpy=True, normalize_embeddings=True)
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Legacy helpers — GIỮ NGUYÊN để không break các import cũ trong scoring.py
+# Legacy helpers
 # ─────────────────────────────────────────────────────────────────────────────
 def build_tfidf_matrix(documents: list[str]):
-    """
-    Backward-compat fallback dùng trong explain_job_match khi job không có trong cache.
-    Vẫn dùng TF-IDF để không ảnh hưởng fallback path.
-    """
     from sklearn.feature_extraction.text import TfidfVectorizer
     vectorizer   = TfidfVectorizer()
     tfidf_matrix = vectorizer.fit_transform(documents)
@@ -142,6 +154,5 @@ def build_tfidf_matrix(documents: list[str]):
 
 
 def compute_cosine_scores(tfidf_matrix) -> list[float]:
-    """Backward-compat — giữ nguyên."""
     scores = cosine_similarity(tfidf_matrix[0:1], tfidf_matrix[1:]).flatten()
     return scores.tolist()
