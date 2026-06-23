@@ -168,7 +168,14 @@ class _CompaniesScreenState extends State<CompaniesScreen> {
           ),
           const SizedBox(height: 20),
           ShadButton.outline(
-            onPressed: () {},
+            onPressed: () {
+              ShadToaster.of(context).show(
+                const ShadToast(
+                  title: Text("Coming Soon"),
+                  description: Text("Company profile pages will be available in version 2.0."),
+                )
+              );
+            },
             width: double.infinity,
             child: const Text("View Profile"),
           ),

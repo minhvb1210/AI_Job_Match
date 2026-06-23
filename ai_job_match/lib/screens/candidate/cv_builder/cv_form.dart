@@ -259,6 +259,12 @@ class _ExperienceForm extends StatelessWidget {
                     ))),
                   ],
                 ),
+                const SizedBox(height: 16),
+                _buildField("Description", ShadInput(
+                  initialValue: exp.description,
+                  maxLines: 3,
+                  onChanged: (v) => provider.updateExperience(index, exp..description = v),
+                )),
               ],
             ),
           );

@@ -135,7 +135,7 @@ class JobService {
   Future<List<dynamic>> getAiSourcingCandidates(int jobId) async {
     final dio = await ApiService.authenticated();
     final response = await dio.get('/jobs/$jobId/ai-suggested-candidates');
-    return response.data['data'] as List<dynamic>;
+    return response.data['data']['items'] as List<dynamic>;
   }
 
   /// Public: Get external jobs from Remotive.
