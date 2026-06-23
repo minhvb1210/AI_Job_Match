@@ -7,7 +7,7 @@ from fastapi.responses import JSONResponse
 
 from app.core.database import engine, Base
 from app.core.responses import error_response
-from app.routers import auth, jobs, cv, applications, companies, notifications, ai, interviews, dashboard, profile, admin
+from app.routers import auth, jobs, cv, applications, companies, notifications, ai, interviews, dashboard, profile
 
 # ── Ensure tables exist ──────────────────────────────────────────────────────
 Base.metadata.create_all(bind=engine)
@@ -41,7 +41,6 @@ app.include_router(ai.router)
 app.include_router(interviews.router)
 app.include_router(dashboard.router)
 app.include_router(profile.router)
-app.include_router(admin.router)
 
 
 # ── Global Exception Handlers ─────────────────────────────────────────────────
