@@ -21,11 +21,11 @@ ai_logger = logging.getLogger("ai_scoring")
 # ─────────────────────────────────────────
 # Scoring constants  (unchanged)
 # ─────────────────────────────────────────
-_COSINE_SCALE     = 0.3    # raw cosine mapped: score/0.3 → %
-_KW_BONUS_PER     = 3      # % per matched keyword
-_KW_BONUS_MAX     = 30     # % cap on keyword bonus
-_INDUSTRY_BONUS   = 10     # % when CV & job industries match
-_INDUSTRY_PENALTY = -15    # % when they don't
+_COSINE_SCALE     = 1.0    # raw cosine mapped directly to % (0.5 → 50%)
+_KW_BONUS_PER     = 2      # % per matched keyword
+_KW_BONUS_MAX     = 20     # % cap on keyword bonus
+_INDUSTRY_BONUS   = 5      # % when CV & job industries match
+_INDUSTRY_PENALTY = -5     # % when they don't
 _TOP_N_RESULTS    = 10
 
 
