@@ -8,6 +8,7 @@ import 'package:file_picker/file_picker.dart';
 import '../../../providers/resume_provider.dart';
 import '../../../models/resume_data.dart';
 import '../../../theme/app_colors.dart';
+import 'form_stateful_input.dart';
 
 class CvForm extends StatelessWidget {
   const CvForm({super.key});
@@ -153,12 +154,12 @@ class _PersonalInformationForm extends StatelessWidget {
 
     return Column(
       children: [
-        _buildField("Full Name", ShadInput(
+        _buildField("Full Name", FormStatefulInput(
           initialValue: data.fullName,
           onChanged: (v) => provider.updatePersonalInfo(fullName: v),
         )),
         const SizedBox(height: 16),
-        _buildField("Job Title", ShadInput(
+        _buildField("Job Title", FormStatefulInput(
           initialValue: data.jobTitle,
           onChanged: (v) => provider.updatePersonalInfo(jobTitle: v),
         )),
@@ -170,19 +171,19 @@ class _PersonalInformationForm extends StatelessWidget {
         const SizedBox(height: 16),
         Row(
           children: [
-            Expanded(child: _buildField("Email", ShadInput(
+            Expanded(child: _buildField("Email", FormStatefulInput(
               initialValue: data.email,
               onChanged: (v) => provider.updatePersonalInfo(email: v),
             ))),
             const SizedBox(width: 16),
-            Expanded(child: _buildField("Phone", ShadInput(
+            Expanded(child: _buildField("Phone", FormStatefulInput(
               initialValue: data.phone,
               onChanged: (v) => provider.updatePersonalInfo(phone: v),
             ))),
           ],
         ),
         const SizedBox(height: 16),
-        _buildField("Address", ShadInput(
+        _buildField("Address", FormStatefulInput(
           initialValue: data.address,
           onChanged: (v) => provider.updatePersonalInfo(address: v),
         )),
@@ -197,7 +198,7 @@ class _ObjectiveForm extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<ResumeProvider>();
-    return ShadInput(
+    return FormStatefulInput(
       initialValue: provider.data.objective,
       maxLines: 4,
       onChanged: (v) => provider.updatePersonalInfo(objective: v),
@@ -236,31 +237,31 @@ class _ExperienceForm extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 16),
-                _buildField("Company", ShadInput(
+                _buildField("Company", FormStatefulInput(
                   initialValue: exp.company,
                   onChanged: (v) => provider.updateExperience(index, exp..company = v),
                 )),
                 const SizedBox(height: 16),
-                _buildField("Position", ShadInput(
+                _buildField("Position", FormStatefulInput(
                   initialValue: exp.position,
                   onChanged: (v) => provider.updateExperience(index, exp..position = v),
                 )),
                 const SizedBox(height: 16),
                 Row(
                   children: [
-                    Expanded(child: _buildField("Start Year", ShadInput(
+                    Expanded(child: _buildField("Start Year", FormStatefulInput(
                       initialValue: exp.startYear,
                       onChanged: (v) => provider.updateExperience(index, exp..startYear = v),
                     ))),
                     const SizedBox(width: 16),
-                    Expanded(child: _buildField("End Year", ShadInput(
+                    Expanded(child: _buildField("End Year", FormStatefulInput(
                       initialValue: exp.endYear,
                       onChanged: (v) => provider.updateExperience(index, exp..endYear = v),
                     ))),
                   ],
                 ),
                 const SizedBox(height: 16),
-                _buildField("Description", ShadInput(
+                _buildField("Description", FormStatefulInput(
                   initialValue: exp.description,
                   maxLines: 3,
                   onChanged: (v) => provider.updateExperience(index, exp..description = v),
@@ -310,12 +311,12 @@ class _EducationForm extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 16),
-                _buildField("School", ShadInput(
+                _buildField("School", FormStatefulInput(
                   initialValue: edu.school,
                   onChanged: (v) => provider.updateEducation(index, edu..school = v),
                 )),
                 const SizedBox(height: 16),
-                _buildField("Degree", ShadInput(
+                _buildField("Degree", FormStatefulInput(
                   initialValue: edu.degree,
                   onChanged: (v) => provider.updateEducation(index, edu..degree = v),
                 )),
@@ -339,9 +340,9 @@ class _SkillsForm extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<ResumeProvider>();
-    return ShadInput(
+    return FormStatefulInput(
       initialValue: provider.data.skills.join(", "),
-      placeholder: const Text("e.g. Flutter, Dart, Python (separated by comma)"),
+      placeholder: "e.g. Flutter, Dart, Python (separated by comma)",
       onChanged: (v) => provider.updateSkills(v.split(",").map((e) => e.trim()).where((e) => e.isNotEmpty).toList()),
     );
   }
@@ -378,12 +379,12 @@ class _ProjectsForm extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 16),
-                _buildField("Project Name", ShadInput(
+                _buildField("Project Name", FormStatefulInput(
                   initialValue: proj.name,
                   onChanged: (v) => provider.updateProject(index, proj..name = v),
                 )),
                 const SizedBox(height: 16),
-                _buildField("Description", ShadInput(
+                _buildField("Description", FormStatefulInput(
                   initialValue: proj.description,
                   onChanged: (v) => provider.updateProject(index, proj..description = v),
                 )),
@@ -407,9 +408,9 @@ class _CertificatesForm extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<ResumeProvider>();
-    return ShadInput(
+    return FormStatefulInput(
       initialValue: provider.data.certificates.join(", "),
-      placeholder: const Text("e.g. AWS Solutions Architect, Google Cloud Professional (comma separated)"),
+      placeholder: "e.g. AWS Solutions Architect, Google Cloud Professional (comma separated)",
       onChanged: (v) => provider.updateCertificates(v.split(",").map((e) => e.trim()).where((e) => e.isNotEmpty).toList()),
     );
   }
@@ -421,9 +422,9 @@ class _LanguagesForm extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<ResumeProvider>();
-    return ShadInput(
+    return FormStatefulInput(
       initialValue: provider.data.languages.join(", "),
-      placeholder: const Text("e.g. English (Fluent), Vietnamese (Native)"),
+      placeholder: "e.g. English (Fluent), Vietnamese (Native)",
       onChanged: (v) => provider.updateLanguages(v.split(",").map((e) => e.trim()).where((e) => e.isNotEmpty).toList()),
     );
   }

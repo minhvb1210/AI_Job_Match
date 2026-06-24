@@ -25,7 +25,7 @@ _COSINE_SCALE     = 1.0    # raw cosine mapped directly to % (0.5 → 50%)
 _KW_BONUS_PER     = 2      # % per matched keyword
 _KW_BONUS_MAX     = 20     # % cap on keyword bonus
 _INDUSTRY_BONUS   = 5      # % when CV & job industries match
-_INDUSTRY_PENALTY = -5     # % when they don't
+_INDUSTRY_PENALTY = -25    # % when they don't
 _TOP_N_RESULTS    = 10
 
 
@@ -124,7 +124,7 @@ def match_cv_to_jobs(cv_text: str, jobs: list) -> list[dict]:
         if missing:
             ai_logger.debug("  Missing skills:   %s", missing[:10])
 
-        if final > 0:
+        if final >= 40.0:
             results.append({
                 "job":            job,
                 "score":          final,
@@ -249,11 +249,8 @@ def explain_job_match(cv_text: str, job, jobs: list) -> dict:
 
 def match_candidates_to_job(job_text: str, profiles: list) -> list[dict]:
     """
-    Rank CandidateProfile ORM objects against a job description.
-
-    Returns (max _TOP_N_RESULTS) dicts sorted by score descending:
-      {"profile": <CandidateProfile>, "score": <float 0-100>}
-    (Candidate matching is not cached — profiles change frequently.)
+    Rank CandidateProfile ORM objects against a job description using SBERT + BM25.
+    Returns (max _TOP_N_RESULTS) dicts sorted by score descending.
     """
     if not profiles:
         return []
@@ -261,19 +258,41 @@ def match_candidates_to_job(job_text: str, profiles: list) -> list[dict]:
     processed_job      = preprocess_text(job_text)
     processed_profiles = [preprocess_text(p.skills_text or "") for p in profiles]
 
-    documents     = [processed_job] + processed_profiles
-    _, tfidf      = build_tfidf_matrix(documents)
-    cosine_scores = compute_cosine_scores(tfidf)
+    from app.services.ai.vectorization import _get_sbert_model, _tokenize_vi
+    from rank_bm25 import BM25Okapi
+    import numpy as np
+
+    # 1. BM25
+    tokenized_profiles = [_tokenize_vi(text) for text in processed_profiles]
+    bm25_index = BM25Okapi(tokenized_profiles)
+    job_tokens = _tokenize_vi(processed_job)
+    bm25_scores = np.array(bm25_index.get_scores(job_tokens), dtype=float)
+    max_bm25 = max(bm25_scores.max(), 10.0)
+    bm25_norm = bm25_scores / max_bm25 if max_bm25 > 0 else np.zeros_like(bm25_scores)
+
+    # 2. SBERT
+    sbert = _get_sbert_model()
+    job_emb = sbert.encode([processed_job], convert_to_numpy=True, normalize_embeddings=True)
+    profile_embs = sbert.encode(processed_profiles, convert_to_numpy=True, normalize_embeddings=True)
+    sbert_scores = (profile_embs @ job_emb.T).flatten()
+    sbert_norm = np.clip(sbert_scores, 0, 1)
+
+    # 3. Hybrid (alpha=0.5)
+    hybrid_scores = 0.5 * bm25_norm + 0.5 * sbert_norm
 
     results = []
-    for i, score in enumerate(cosine_scores):
-        scaled = min(round((score / _COSINE_SCALE) * 100, 2), 100.0)
+    for i, score in enumerate(hybrid_scores):
+        scaled = min(round((float(score) / _COSINE_SCALE) * 100, 2), 100.0)
+        
+        # Hard threshold filter: Drop very poor matches to keep results highly relevant
+        if scaled < 30.0:
+            continue
+            
         ai_logger.info(
-            "[CANDIDATE] Profile #%d | cosine=%.1f%% → scaled=%.2f%%",
-            profiles[i].id, score * 100, scaled,
+            "[CANDIDATE] Profile #%d | hybrid_score=%.4f → scaled=%.2f%%",
+            profiles[i].id, score, scaled,
         )
-        if scaled > 0:
-            results.append({"profile": profiles[i], "score": scaled})
+        results.append({"profile": profiles[i], "score": scaled})
 
     results.sort(key=lambda x: x["score"], reverse=True)
     return results[:_TOP_N_RESULTS]

@@ -169,11 +169,79 @@ class _CompaniesScreenState extends State<CompaniesScreen> {
           const SizedBox(height: 20),
           ShadButton.outline(
             onPressed: () {
-              ShadToaster.of(context).show(
-                const ShadToast(
-                  title: Text("Coming Soon"),
-                  description: Text("Company profile pages will be available in version 2.0."),
-                )
+              showDialog(
+                context: context,
+                builder: (context) => Dialog(
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+                  child: Container(
+                    width: 500,
+                    padding: const EdgeInsets.all(32),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          width: 100,
+                          height: 100,
+                          decoration: BoxDecoration(
+                            color: AppColors.primary.withOpacity(0.05),
+                            borderRadius: BorderRadius.circular(24),
+                          ),
+                          child: const Icon(LucideIcons.building, color: AppColors.primary, size: 50),
+                        ),
+                        const SizedBox(height: 24),
+                        Text(
+                          company['name'] ?? 'Company Name',
+                          textAlign: TextAlign.center,
+                          style: GoogleFonts.outfit(fontSize: 28, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                        ),
+                        const SizedBox(height: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: AppColors.primary.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Text(
+                            company['industry'] ?? 'Technology',
+                            style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                        const Divider(),
+                        const SizedBox(height: 24),
+                        const Align(
+                          alignment: Alignment.centerLeft,
+                          child: Text("About Company", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          company['description'] ?? 'No description available.',
+                          style: const TextStyle(color: AppColors.textSecondary, fontSize: 15, height: 1.6),
+                        ),
+                        const SizedBox(height: 24),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Row(
+                              children: [
+                                const Icon(LucideIcons.briefcase, color: AppColors.textSecondary, size: 18),
+                                const SizedBox(width: 8),
+                                Text("${company['jobs_count'] ?? 0} open jobs", style: const TextStyle(fontWeight: FontWeight.w600)),
+                              ],
+                            ),
+                            ShadButton(
+                              onPressed: () {
+                                Navigator.pop(context);
+                                context.go('/jobs');
+                              },
+                              child: const Text("View Jobs"),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
               );
             },
             width: double.infinity,

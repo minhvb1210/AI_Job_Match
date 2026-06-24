@@ -9485,7 +9485,7 @@ _.e=c
 _.f=d
 _.a=e},
 aoo:function aoo(){},
-bfo(){return"https://ai-job-match-v209.onrender.com"},
+bfo(){return"http://localhost:8000"},
 qW(a){var s,r="application/json",q=A.bfo(),p=A.t(t.N,t.z)
 p.l(0,"Content-Type",r)
 p.l(0,"Accept",r)
