@@ -10,6 +10,7 @@ import '../../../widgets/responsive.dart';
 import 'cv_builder/cv_form.dart';
 import 'cv_builder/cv_preview.dart';
 import '../../../services/resume_export_service.dart';
+import '../../../services/cv_service.dart';
 
 class CvBuilderScreen extends StatefulWidget {
   const CvBuilderScreen({super.key});
@@ -34,7 +35,7 @@ class _CvBuilderScreenState extends State<CvBuilderScreen> {
         backgroundColor: Colors.white,
         elevation: 0,
         actions: [
-          _buildActionButtons(resumeProvider),
+          _buildActionButtons(context, resumeProvider),
           const SizedBox(width: 16),
         ],
       ),
@@ -80,12 +81,41 @@ class _CvBuilderScreenState extends State<CvBuilderScreen> {
     );
   }
 
-  Widget _buildActionButtons(ResumeProvider provider) {
+  Widget _buildActionButtons(BuildContext context, ResumeProvider provider) {
     return Row(
       children: [
         ShadButton.outline(
-          onPressed: () {
-            // Save logic would go here
+          onPressed: () async {
+            try {
+              final String cvText = '''
+${provider.data.fullName}
+${provider.data.jobTitle}
+Objective: ${provider.data.objective}
+Skills: ${provider.data.skills.join(', ')}
+Experience:
+${provider.data.experience.map((e) => "${e.position} at ${e.company} (${e.startYear}-${e.endYear})\n${e.description}").join('\n')}
+Education:
+${provider.data.education.map((e) => "${e.degree} at ${e.school}").join('\n')}
+Projects:
+${provider.data.projects.map((e) => "${e.name}\n${e.description}").join('\n')}
+Certificates: ${provider.data.certificates.join(', ')}
+Languages: ${provider.data.languages.join(', ')}
+''';
+              await CvService().updateProfile(cvText);
+              if (context.mounted) {
+                ShadToaster.of(context).show(const ShadToast(
+                  title: Text("Saved"),
+                  description: Text("Your CV has been saved online successfully."),
+                ));
+              }
+            } catch (e) {
+              if (context.mounted) {
+                ShadToaster.of(context).show(ShadToast.destructive(
+                  title: const Text("Error"),
+                  description: Text("Failed to save CV: $e"),
+                ));
+              }
+            }
           },
           child: const Text("Save Draft"),
         ),

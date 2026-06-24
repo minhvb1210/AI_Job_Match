@@ -18,6 +18,7 @@ class _JobDetailScreenState extends State<JobDetailScreen> {
   final _jobService = JobService();
   Map<String, dynamic>? _job;
   bool _isLoading = true;
+  bool _isSaved = false;
 
   @override
   void initState() {
@@ -28,12 +29,21 @@ class _JobDetailScreenState extends State<JobDetailScreen> {
   Future<void> _fetchDetail() async {
     try {
       final data = await _jobService.getJobById(widget.jobId);
-      setState(() {
-        _job = data;
-        _isLoading = false;
-      });
+      bool isSaved = false;
+      try {
+        final savedList = await _jobService.getSavedJobs();
+        isSaved = savedList.any((j) => j['id'] == widget.jobId);
+      } catch (_) {}
+
+      if (mounted) {
+        setState(() {
+          _job = data;
+          _isSaved = isSaved;
+          _isLoading = false;
+        });
+      }
     } catch (_) {
-      setState(() => _isLoading = false);
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -93,8 +103,28 @@ class _JobDetailScreenState extends State<JobDetailScreen> {
               ),
               const SizedBox(width: 8),
               ShadButton.outline(
-                child: const Icon(Icons.bookmark_border),
-                onPressed: () {},
+                child: Icon(_isSaved ? Icons.bookmark : Icons.bookmark_border),
+                onPressed: () async {
+                  try {
+                    await _jobService.toggleSaveJob(widget.jobId, _isSaved);
+                    setState(() {
+                      _isSaved = !_isSaved;
+                    });
+                    if (mounted) {
+                      ShadToaster.of(context).show(ShadToast(
+                        title: Text(_isSaved ? "Saved" : "Unsaved"),
+                        description: Text(_isSaved ? "Job saved to your profile." : "Job removed from saved list."),
+                      ));
+                    }
+                  } catch (e) {
+                    if (mounted) {
+                      ShadToaster.of(context).show(ShadToast.destructive(
+                        title: const Text("Error"),
+                        description: Text("Failed to update saved job: $e"),
+                      ));
+                    }
+                  }
+                },
               ),
             ],
           ),

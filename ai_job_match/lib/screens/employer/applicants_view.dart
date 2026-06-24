@@ -249,14 +249,42 @@ class _ApplicantsViewState extends State<ApplicantsView> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              _buildDialogField("Date", ShadInput(
-                controller: dateController,
-                placeholder: const Text("YYYY-MM-DD"),
+              _buildDialogField("Date", GestureDetector(
+                onTap: () async {
+                  final date = await showDatePicker(
+                    context: context,
+                    initialDate: DateTime.now(),
+                    firstDate: DateTime.now(),
+                    lastDate: DateTime(2030),
+                  );
+                  if (date != null) {
+                    dateController.text = "\${date.year}-\${date.month.toString().padLeft(2, '0')}-\${date.day.toString().padLeft(2, '0')}";
+                  }
+                },
+                child: AbsorbPointer(
+                  child: ShadInput(
+                    controller: dateController,
+                    placeholder: const Text("YYYY-MM-DD"),
+                  ),
+                ),
               )),
               const SizedBox(height: 16),
-              _buildDialogField("Time", ShadInput(
-                controller: timeController,
-                placeholder: const Text("HH:MM"),
+              _buildDialogField("Time", GestureDetector(
+                onTap: () async {
+                  final time = await showTimePicker(
+                    context: context,
+                    initialTime: TimeOfDay.now(),
+                  );
+                  if (time != null && context.mounted) {
+                    timeController.text = "\${time.hour.toString().padLeft(2, '0')}:\${time.minute.toString().padLeft(2, '0')}";
+                  }
+                },
+                child: AbsorbPointer(
+                  child: ShadInput(
+                    controller: timeController,
+                    placeholder: const Text("HH:MM"),
+                  ),
+                ),
               )),
               const SizedBox(height: 16),
               _buildDialogField("Location", ShadInput(

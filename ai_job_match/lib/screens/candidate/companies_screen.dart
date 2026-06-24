@@ -6,6 +6,8 @@ import 'package:shadcn_ui/shadcn_ui.dart';
 import '../../services/company_service.dart';
 import '../../theme/app_colors.dart';
 import 'package:skeletonizer/skeletonizer.dart';
+import 'package:provider/provider.dart';
+import '../../providers/job_provider.dart';
 
 class CompaniesScreen extends StatefulWidget {
   const CompaniesScreen({super.key});
@@ -232,6 +234,7 @@ class _CompaniesScreenState extends State<CompaniesScreen> {
                             ShadButton(
                               onPressed: () {
                                 Navigator.pop(context);
+                                context.read<JobProvider>().updateFilters(query: company['name']);
                                 context.go('/jobs');
                               },
                               child: const Text("View Jobs"),
