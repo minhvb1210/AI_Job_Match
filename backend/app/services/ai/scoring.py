@@ -247,7 +247,7 @@ def explain_job_match(cv_text: str, job, jobs: list) -> dict:
     }
 
 
-def match_candidates_to_job(job_text: str, profiles: list) -> list[dict]:
+def match_candidates_to_job(job, profiles: list) -> list[dict]:
     """
     Rank CandidateProfile ORM objects against a job description using SBERT + BM25.
     Returns (max _TOP_N_RESULTS) dicts sorted by score descending.
@@ -255,8 +255,10 @@ def match_candidates_to_job(job_text: str, profiles: list) -> list[dict]:
     if not profiles:
         return []
 
+    job_text = f"{job.title} {job.description} {job.skills}"
     processed_job      = preprocess_text(job_text)
     processed_profiles = [preprocess_text(p.skills_text or "") for p in profiles]
+    cleaned_profiles   = [clean_text(p.skills_text or "") for p in profiles]
 
     from app.services.ai.vectorization import _get_sbert_model, _tokenize_vi
     from rank_bm25 import BM25Okapi
@@ -280,19 +282,32 @@ def match_candidates_to_job(job_text: str, profiles: list) -> list[dict]:
     # 3. Hybrid (alpha=0.5)
     hybrid_scores = 0.5 * bm25_norm + 0.5 * sbert_norm
 
+    job_category = (job.category or "IT").strip()
+
     results = []
     for i, score in enumerate(hybrid_scores):
-        scaled = min(round((float(score) / _COSINE_SCALE) * 100, 2), 100.0)
+        cosine_pct = min((float(score) / _COSINE_SCALE) * 100, 100.0)
+        
+        cv_text = profiles[i].skills_text or ""
+        try:
+            cv_industry, _ = predict_cv_industry(cv_text)
+        except Exception:
+            cv_industry = "IT"
+
+        kw_bonus, _ = _keyword_bonus(cleaned_profiles[i], job_category)
+        industry_adj, _ = _industry_adjustment(cv_industry, job_category)
+        
+        final = _final_score(cosine_pct, kw_bonus, industry_adj)
         
         # Hard threshold filter: Drop very poor matches to keep results highly relevant
-        if scaled < 30.0:
+        if final < 30.0:
             continue
             
         ai_logger.info(
-            "[CANDIDATE] Profile #%d | hybrid_score=%.4f → scaled=%.2f%%",
-            profiles[i].id, score, scaled,
+            "[CANDIDATE] Profile #%d | hybrid_score=%.4f → cosine_pct=%.2f%% kw=+%d%% ind=%+d%% → final=%.2f%%",
+            profiles[i].id, score, cosine_pct, kw_bonus, industry_adj, final,
         )
-        results.append({"profile": profiles[i], "score": scaled})
+        results.append({"profile": profiles[i], "score": final})
 
     results.sort(key=lambda x: x["score"], reverse=True)
     return results[:_TOP_N_RESULTS]

@@ -111,9 +111,44 @@ from pydantic import BaseModel
 class ProfileUpdate(BaseModel):
     skills_text: str
 
+from fastapi import BackgroundTasks
+
+def recalculate_candidate_applications(candidate_id: int, cv_text: str):
+    from app.core.database import SessionLocal
+    from app.models.models import Application, Job
+    from app.services.ai.scoring import explain_job_match
+    
+    if not cv_text.strip():
+        return
+        
+    db = SessionLocal()
+    try:
+        apps = db.query(Application).filter(Application.candidate_id == candidate_id).all()
+        if apps:
+            all_jobs = db.query(Job).all()
+            for app in apps:
+                job = next((j for j in all_jobs if j.id == app.job_id), None)
+                if job:
+                    try:
+                        breakdown = explain_job_match(cv_text=cv_text, job=job, jobs=all_jobs)
+                        app.match_score = breakdown["final_score"]
+                    except Exception:
+                        pass
+            db.commit()
+    except Exception as e:
+        import logging
+        logging.error(f"Failed to recalculate application scores: {e}")
+    finally:
+        db.close()
+
 @router.put("/profile")
 @router.post("/save")
-def save_profile(profile_update: ProfileUpdate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def save_profile(
+    profile_update: ProfileUpdate, 
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db), 
+    current_user: User = Depends(get_current_user)
+):
     profile = db.query(CandidateProfile).filter(CandidateProfile.user_id == current_user.id).first()
     if not profile:
         profile = CandidateProfile(user_id=current_user.id, skills_text=profile_update.skills_text)
@@ -122,6 +157,9 @@ def save_profile(profile_update: ProfileUpdate, db: Session = Depends(get_db), c
         profile.skills_text = profile_update.skills_text
 
     db.commit()
+    
+    background_tasks.add_task(recalculate_candidate_applications, current_user.id, profile_update.skills_text)
+    
     return success_response(message="Profile saved successfully.")
 
 @router.get("/my-profile")

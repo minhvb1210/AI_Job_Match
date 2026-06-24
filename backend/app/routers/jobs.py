@@ -308,8 +308,7 @@ def suggest_candidates_for_job(
     if not all_profiles:
         return paginated_response(items=[], total=0, page=page, limit=limit)
 
-    job_text        = f"{job.title} {job.description} {job.skills}"
-    recommendations = match_candidates_to_job(job_text, all_profiles)
+    recommendations = match_candidates_to_job(job, all_profiles)
     total           = len(recommendations)
 
     # Manual pagination on the already-ranked results list
