@@ -78,8 +78,13 @@ class ApiService {
   static String errorMessage(Object e) {
     if (e is DioException) {
       final data = e.response?.data;
-      if (data is Map && data['message'] != null) {
-        return data['message'].toString();
+      if (data is Map) {
+        if (data['detail'] != null) {
+          return data['detail'].toString();
+        }
+        if (data['message'] != null) {
+          return data['message'].toString();
+        }
       }
       
       switch (e.type) {

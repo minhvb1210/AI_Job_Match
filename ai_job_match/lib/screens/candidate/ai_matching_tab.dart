@@ -12,6 +12,7 @@ import '../../providers/cv_provider.dart';
 import '../../theme/app_colors.dart';
 import '../../widgets/modern_job_card.dart';
 import '../../services/application_service.dart';
+import '../../services/api_service.dart';
 import 'package:go_router/go_router.dart';
 
 class AiMatchingTab extends StatefulWidget {
@@ -225,7 +226,7 @@ class _AiMatchingTabState extends State<AiMatchingTab> {
       if (mounted) {
         ShadToaster.of(context).show(ShadToast.destructive(
           title: const Text("Error"),
-          description: Text(e.toString()),
+          description: Text(ApiService.errorMessage(e)),
         ));
       }
     }

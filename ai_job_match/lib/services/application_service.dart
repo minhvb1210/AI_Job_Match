@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import '../models/application.dart';
 import 'api_service.dart';
 
@@ -7,15 +8,27 @@ class ApplicationService {
     required int jobId,
     double matchScore = 0,
   }) async {
-    final dio = await ApiService.authenticated();
-    final response = await dio.post('/applications/', data: {
-      'job_id':      jobId,
-      'match_score': matchScore,
-    });
-    if (response.data is Map && response.data['success'] == true) {
-       return response.data['data'] as Map<String, dynamic>;
+    try {
+      final dio = await ApiService.authenticated();
+      final response = await dio.post('/applications/', data: {
+        'job_id':      jobId,
+        'match_score': matchScore,
+      });
+      if (response.data is Map && response.data['success'] == true) {
+         return response.data['data'] as Map<String, dynamic>;
+      }
+      return response.data as Map<String, dynamic>;
+    } catch (e) {
+      if (e is DioException && e.response != null) {
+        final data = e.response!.data;
+        if (data is Map && data.containsKey('detail')) {
+          throw Exception(data['detail']);
+        } else if (data is Map && data.containsKey('message')) {
+          throw Exception(data['message']);
+        }
+      }
+      throw Exception('Failed to apply for job. Please try again.');
     }
-    return response.data as Map<String, dynamic>;
   }
 
   /// Candidate: get my submitted applications (paginated).
