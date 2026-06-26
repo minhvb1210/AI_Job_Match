@@ -54,6 +54,24 @@ def _final_score(cosine_pct: float, kw_bonus: int, industry_adj: int) -> float:
     return max(min(round(cosine_pct + kw_bonus + industry_adj, 2), 100.0), 0.0)
 
 
+def extract_skills_from_cv(cv_text: str) -> list[str]:
+    """
+    Scan CV text against ALL industry keyword dictionaries and return
+    a deduplicated, title-cased list of skills found.
+    """
+    cleaned = clean_text(cv_text)
+    found: list[str] = []
+    seen: set[str] = set()
+    for _cat, keywords in INDUSTRY_KEYWORDS.items():
+        for kw in keywords:
+            if kw.lower() not in seen and re.search(
+                r"\b" + re.escape(kw.lower()) + r"\b", cleaned
+            ):
+                found.append(kw.title())
+                seen.add(kw.lower())
+    return found
+
+
 # ─────────────────────────────────────────
 # Public API
 # ─────────────────────────────────────────

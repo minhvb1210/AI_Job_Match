@@ -58,12 +58,16 @@ class JobMatch {
 
 class CvMatchResult {
   final String extractedTextPreview;
+  final List<String> extractedSkills;
+  final List<String> topSkillGaps;
   final List<JobMatch> matches;
   final bool success;
   final String message;
 
   CvMatchResult({
     required this.extractedTextPreview,
+    required this.extractedSkills,
+    required this.topSkillGaps,
     required this.matches,
     this.success = true,
     this.message = '',
@@ -74,6 +78,14 @@ class CvMatchResult {
     final matchList = (json['matches'] as List<dynamic>?) ?? [];
     return CvMatchResult(
       extractedTextPreview: json['extracted_text_preview'] as String? ?? '',
+      extractedSkills: (json['extracted_skills'] as List<dynamic>?)
+              ?.map((s) => s.toString())
+              .toList() ??
+          [],
+      topSkillGaps: (json['top_skill_gaps'] as List<dynamic>?)
+              ?.map((s) => s.toString())
+              .toList() ??
+          [],
       matches: matchList
           .map((m) => JobMatch.fromJson(m as Map<String, dynamic>))
           .toList(),

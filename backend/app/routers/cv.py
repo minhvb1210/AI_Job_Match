@@ -13,6 +13,7 @@ from app.services.ai_engine import (
     match_cv_to_jobs,
     # calculate_missing_skills is now embedded in match_cv_to_jobs result
 )
+from app.services.ai.scoring import extract_skills_from_cv
 
 router = APIRouter(prefix="/cv", tags=["cv"])
 
@@ -63,9 +64,28 @@ async def upload_match_cv(
             },
         })
 
+    # Extract skills actually found in the CV
+    extracted_skills = extract_skills_from_cv(cv_text)
+
+    # Aggregate top missing skills across all matched jobs (deduplicated)
+    seen_gaps = set()
+    top_skill_gaps = []
+    for res in formatted_results:
+        for skill in res.get("missing_skills", []):
+            normalized = skill.strip().title()
+            if normalized not in seen_gaps:
+                seen_gaps.add(normalized)
+                top_skill_gaps.append(normalized)
+            if len(top_skill_gaps) >= 10:
+                break
+        if len(top_skill_gaps) >= 10:
+            break
+
     return success_response(
         data={
             "extracted_text_preview": cv_text[:200] + "...",
+            "extracted_skills": extracted_skills,
+            "top_skill_gaps": top_skill_gaps,
             "matches": formatted_results,
         },
         message=f"Found {len(formatted_results)} matching jobs",
@@ -98,10 +118,26 @@ def get_saved_matches(db: Session = Depends(get_db), current_user: User = Depend
                 "skills":   job.skills.split(",") if job.skills else [],
             },
         })
+    extracted_skills = extract_skills_from_cv(profile.skills_text)
+
+    seen_gaps = set()
+    top_skill_gaps = []
+    for res in formatted_results:
+        for skill in res.get("missing_skills", []):
+            normalized = skill.strip().title()
+            if normalized not in seen_gaps:
+                seen_gaps.add(normalized)
+                top_skill_gaps.append(normalized)
+            if len(top_skill_gaps) >= 10:
+                break
+        if len(top_skill_gaps) >= 10:
+            break
 
     return success_response(
         data={
             "extracted_text_preview": profile.skills_text[:200] + "...",
+            "extracted_skills": extracted_skills,
+            "top_skill_gaps": top_skill_gaps,
             "matches": formatted_results,
         },
         message=f"Found {len(formatted_results)} matching jobs",

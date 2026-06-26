@@ -195,7 +195,10 @@ class _AiMatchingTabState extends State<AiMatchingTab> {
             // Extracted Info Card
             Expanded(
               flex: 3,
-              child: _buildExtractedInfoCard(),
+              child: _buildExtractedInfoCard(
+                matchResult.extractedSkills,
+                matchResult.topSkillGaps,
+              ),
             ),
           ],
         ),
@@ -275,7 +278,7 @@ class _AiMatchingTabState extends State<AiMatchingTab> {
     );
   }
 
-  Widget _buildExtractedInfoCard() {
+  Widget _buildExtractedInfoCard(List<String> extractedSkills, List<String> topSkillGaps) {
     return Container(
       padding: const EdgeInsets.all(32),
       decoration: BoxDecoration(
@@ -299,18 +302,20 @@ class _AiMatchingTabState extends State<AiMatchingTab> {
             style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
           ),
           const SizedBox(height: 16),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              "Python", "Flutter", "Machine Learning", "NLP", "API Design", "Project Management"
-            ].map((skill) => Chip(
-              label: Text(skill, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
-              backgroundColor: AppColors.primary.withOpacity(0.05),
-              side: BorderSide.none,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-            )).toList(),
-          ),
+          if (extractedSkills.isEmpty)
+            const Text("No skills detected. Try uploading a more detailed CV.",
+              style: TextStyle(color: AppColors.textSecondary, fontStyle: FontStyle.italic)),
+          if (extractedSkills.isNotEmpty)
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: extractedSkills.map((skill) => Chip(
+                label: Text(skill, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                backgroundColor: AppColors.primary.withOpacity(0.05),
+                side: BorderSide.none,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              )).toList(),
+            ),
           const SizedBox(height: 24),
           const Divider(),
           const SizedBox(height: 24),
@@ -324,20 +329,22 @@ class _AiMatchingTabState extends State<AiMatchingTab> {
           const SizedBox(height: 12),
           const Text("To increase your match score for top roles, consider learning:", style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
           const SizedBox(height: 12),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              "Cloud Deployment", "Microservices", "Docker"
-            ].map((skill) => Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              decoration: BoxDecoration(
-                color: AppColors.error.withOpacity(0.05),
-                borderRadius: BorderRadius.circular(6),
-              ),
-              child: Text(skill, style: const TextStyle(color: AppColors.error, fontSize: 11, fontWeight: FontWeight.bold)),
-            )).toList(),
-          ),
+          if (topSkillGaps.isEmpty)
+            const Text("Great! No major skill gaps detected.",
+              style: TextStyle(color: Colors.green, fontStyle: FontStyle.italic)),
+          if (topSkillGaps.isNotEmpty)
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: topSkillGaps.map((skill) => Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: AppColors.error.withOpacity(0.05),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(skill, style: const TextStyle(color: AppColors.error, fontSize: 11, fontWeight: FontWeight.bold)),
+              )).toList(),
+            ),
         ],
       ),
     );
